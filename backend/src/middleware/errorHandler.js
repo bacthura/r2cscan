@@ -29,6 +29,12 @@ export function notFound(req, res, next) {
 
 /**
  * Global error handler
+ * Handles:
+ * - Zod validation errors
+ * - ValidationError (custom invite code errors)
+ * - AppError (custom application errors)
+ * - Firebase Auth errors
+ * - Generic errors
  */
 export function errorHandler(err, req, res, _next) {
   // Log error in development
@@ -41,16 +47,52 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
-  // Determine status code
+  // ── Zod validation errors ──
+  if (err?.name === 'ZodError') {
+    return res.status(400).json({
+      success: false,
+      error: 'Dados inválidos',
+      details: err.errors.map((e) => ({
+        field: e.path.join('.'),
+        message: e.message
+      }))
+    });
+  }
+
+  // ── ValidationError (custom invite code errors) ──
+  if (err?.name === 'ValidationError') {
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      error: err.message
+    });
+  }
+
+  // ── AppError (custom application errors) ──
+  if (err?.isOperational) {
+    return res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      code: err.code
+    });
+  }
+
+  // ── Firebase Auth errors ──
+  if (err?.code?.startsWith?.('auth/')) {
+    return res.status(400).json({
+      success: false,
+      error: 'Erro de autenticação'
+    });
+  }
+
+  // ── Generic / Unexpected errors ──
   const statusCode = err.statusCode || 500;
-  const code = err.code || 'INTERNAL_ERROR';
   const message = err.isOperational
     ? err.message
     : 'Erro interno do servidor';
 
   res.status(statusCode).json({
+    success: false,
     error: message,
-    code,
     ...(process.env.NODE_ENV !== 'production' && { stack: err.stack?.split('\n').slice(0, 3).join('\n') })
   });
 }

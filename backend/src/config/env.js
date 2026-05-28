@@ -57,6 +57,9 @@ const env = {
   // Firebase (service account JSON as raw JSON or base64)
   firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT || '',
 
+  // Firebase Web API Key (for password verification via REST API)
+  firebaseApiKey: process.env.FIREBASE_API_KEY || '',
+
   // Admin default (will be overridden by DB in production)
   adminPassword: process.env.ADMIN_PASSWORD || 'admin123'
 };

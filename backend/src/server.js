@@ -19,6 +19,7 @@ import maintenanceRoutes from './routes/maintenance.js';
 import stockRoutes from './routes/stock.js';
 import supplierRoutes from './routes/suppliers.js';
 import dashboardRoutes from './routes/dashboard.js';
+import inviteCodeRoutes from './routes/inviteCodes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,6 +64,9 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+// Invite Code Routes (includes /auth/* and /admin/*)
+app.use('/api', inviteCodeRoutes);
 
 // ── Health Check ──
 app.get('/api/health', (req, res) => {

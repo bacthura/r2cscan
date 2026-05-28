@@ -1,192 +1,160 @@
--- =============================================
--- R2C-Scan v2.0 - Supabase Database Schema
--- Execute this SQL in Supabase SQL Editor
--- =============================================
+-- ============================================================
+-- R2C-Scan - Invite Code System
+-- Supabase SQL Schema
+-- v2.0
+-- ============================================================
+-- Execute this SQL in your Supabase SQL Editor
+-- (https://app.supabase.com/project/_/sql/new)
+-- ============================================================
 
--- ── Create tables ──
-
--- Products
-CREATE TABLE IF NOT EXISTS products (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  sku TEXT,
-  category TEXT,
-  description TEXT,
-  tech_specs JSONB DEFAULT '[]',
-  photo_url TEXT,
-  qr_data TEXT,
-  fav BOOLEAN DEFAULT false,
-  user_id TEXT DEFAULT 'anonymous',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- ── INVITE CODES TABLE ──
+-- Stores all invite codes for account registration
+CREATE TABLE IF NOT EXISTS invite_codes (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code          VARCHAR(6) NOT NULL UNIQUE,             -- 6-digit numeric code
+  used          BOOLEAN NOT NULL DEFAULT FALSE,          -- Whether the code has been used
+  used_by       UUID DEFAULT NULL,                      -- User ID who used the code
+  used_at       TIMESTAMPTZ DEFAULT NULL,                -- When the code was used
+  created_by    UUID NOT NULL,                           -- Admin user ID who created the code
+  label         VARCHAR(100) DEFAULT NULL,               -- Optional label for identification
+  manually_invalidated BOOLEAN DEFAULT FALSE,            -- Admin manually invalidated
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),      -- When the code was created
+  expires_at    TIMESTAMPTZ DEFAULT NULL                 -- Null = never expires
 );
 
--- Maintenance
-CREATE TABLE IF NOT EXISTS maintenance (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  type TEXT DEFAULT 'Preventiva',
-  priority TEXT DEFAULT 'media',
-  date TIMESTAMPTZ,
-  time TEXT DEFAULT '08:00',
-  description TEXT,
-  technician TEXT,
-  recurrence TEXT DEFAULT 'none',
-  checklist JSONB DEFAULT '[]',
-  status TEXT DEFAULT 'pending',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- Index for fast code lookup during registration
+CREATE INDEX IF NOT EXISTS idx_invite_codes_code ON invite_codes(code);
+
+-- Index for filtering by used status
+CREATE INDEX IF NOT EXISTS idx_invite_codes_used ON invite_codes(used);
+
+-- Index for listing/sorting by creation date
+CREATE INDEX IF NOT EXISTS idx_invite_codes_created_at ON invite_codes(created_at DESC);
+
+-- Index for checking expiration
+CREATE INDEX IF NOT EXISTS idx_invite_codes_expires_at ON invite_codes(expires_at);
+
+-- ── PROFILES TABLE ──
+-- Extends Firebase Auth users with additional profile data
+CREATE TABLE IF NOT EXISTS profiles (
+  id            UUID PRIMARY KEY,                        -- Matches Firebase Auth UID
+  name          VARCHAR(100) NOT NULL,                   -- User display name
+  email         VARCHAR(255) NOT NULL UNIQUE,            -- User email
+  role          VARCHAR(20) NOT NULL DEFAULT 'user',     -- 'user' or 'admin'
+  avatar_url    TEXT DEFAULT NULL,                       -- Optional avatar URL
+  phone         VARCHAR(20) DEFAULT NULL,                -- Optional phone number
+  is_active     BOOLEAN NOT NULL DEFAULT TRUE,           -- Account active status
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),      -- Account creation date
+  updated_at    TIMESTAMPTZ DEFAULT NULL                 -- Last profile update
 );
 
--- Stock items
-CREATE TABLE IF NOT EXISTS stock_items (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  quantity INTEGER DEFAULT 0,
-  min_quantity INTEGER DEFAULT 10,
-  unit TEXT DEFAULT 'un',
-  location TEXT,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- Index for email lookups
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
+
+-- Index for role-based queries
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
+
+-- ── SECURITY AUDIT LOG TABLE ──
+-- Tracks all security-sensitive operations
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  action        VARCHAR(50) NOT NULL,                    -- Action type (e.g., 'code_generated', 'user_registered', 'login_attempt')
+  user_id       UUID DEFAULT NULL,                       -- User who performed the action (NULL for anonymous)
+  details       JSONB DEFAULT NULL,                      -- Additional context as JSON
+  ip_address    INET DEFAULT NULL,                       -- Requester IP
+  user_agent    TEXT DEFAULT NULL,                       -- Requester user agent
+  success       BOOLEAN NOT NULL DEFAULT TRUE,           -- Whether the action succeeded
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()       -- When the action occurred
 );
 
--- Suppliers
-CREATE TABLE IF NOT EXISTS suppliers (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  cnpj TEXT,
-  ie TEXT,
-  contact TEXT,
-  phone TEXT,
-  email TEXT,
-  address TEXT,
-  category TEXT,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Index for querying logs by action
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
 
--- Stock movements
-CREATE TABLE IF NOT EXISTS stock_movements (
-  id TEXT PRIMARY KEY,
-  item_id TEXT REFERENCES stock_items(id) ON DELETE CASCADE,
-  item_name TEXT,
-  type TEXT CHECK (type IN ('entrada', 'saida')),
-  quantity INTEGER,
-  reason TEXT,
-  timestamp TIMESTAMPTZ DEFAULT NOW()
-);
+-- Index for querying logs by user
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 
--- Scan history
-CREATE TABLE IF NOT EXISTS scan_history (
-  id TEXT PRIMARY KEY,
-  data TEXT,
-  timestamp TIMESTAMPTZ DEFAULT NOW()
-);
+-- Index for time-based queries
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
 
--- Users
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  name TEXT,
-  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- ── SETUP: Create first admin profile ──
+-- ⚠️ IMPORTANT: After creating your first admin user in Firebase,
+--    run the following INSERT with the actual Firebase UID:
+--
+-- INSERT INTO profiles (id, name, email, role)
+-- VALUES ('<FIREBASE_ADMIN_UID>', 'Admin', '<ADMIN_EMAIL>', 'admin');
 
--- ── Indexes for performance ──
-CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
-CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
-CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-CREATE INDEX IF NOT EXISTS idx_products_created ON products(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_maintenance_date ON maintenance(date);
-CREATE INDEX IF NOT EXISTS idx_maintenance_status ON maintenance(status);
-CREATE INDEX IF NOT EXISTS idx_stock_name ON stock_items(name);
-CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
-CREATE INDEX IF NOT EXISTS idx_movements_timestamp ON stock_movements(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_movements_item ON stock_movements(item_id);
-CREATE INDEX IF NOT EXISTS idx_scans_timestamp ON scan_history(timestamp DESC);
+-- ── ROW LEVEL SECURITY (RLS) ──
+-- Enable RLS on all tables for production security
 
--- ── Enable Row Level Security ──
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE maintenance ENABLE ROW LEVEL SECURITY;
-ALTER TABLE stock_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE stock_movements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE scan_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+-- Invite Codes RLS
+ALTER TABLE invite_codes ENABLE ROW LEVEL SECURITY;
 
--- ── RLS Policies ──
+-- Policy: Anyone can read invite codes (needed for validation)
+CREATE POLICY "Anyone can read invite codes"
+  ON invite_codes
+  FOR SELECT
+  USING (true);
 
--- Products: public read, authenticated write
-CREATE POLICY "Products public read" ON products FOR SELECT USING (true);
-CREATE POLICY "Products authenticated insert" ON products FOR INSERT WITH CHECK (auth.role() = 'authenticated' OR auth.role() = 'service_role');
-CREATE POLICY "Products authenticated update" ON products FOR UPDATE USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
-CREATE POLICY "Products admin delete" ON products FOR DELETE USING (auth.role() = 'service_role');
+-- Policy: Only authenticated with role 'admin' can insert
+CREATE POLICY "Admins can insert invite codes"
+  ON invite_codes
+  FOR INSERT
+  WITH CHECK (
+    auth.jwt() ->> 'role' = 'admin'
+  );
 
--- Maintenance: public read, authenticated write
-CREATE POLICY "Maintenance public read" ON maintenance FOR SELECT USING (true);
-CREATE POLICY "Maintenance authenticated write" ON maintenance FOR INSERT WITH CHECK (auth.role() = 'authenticated' OR auth.role() = 'service_role');
-CREATE POLICY "Maintenance authenticated update" ON maintenance FOR UPDATE USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
-CREATE POLICY "Maintenance admin delete" ON maintenance FOR DELETE USING (auth.role() = 'service_role');
+-- Policy: Only service role can update (mark as used)
+CREATE POLICY "Service role can update invite codes"
+  ON invite_codes
+  FOR UPDATE
+  USING (auth.role() = 'service_role');
 
--- Stock: public read, authenticated write
-CREATE POLICY "Stock public read" ON stock_items FOR SELECT USING (true);
-CREATE POLICY "Stock authenticated write" ON stock_items FOR INSERT WITH CHECK (auth.role() = 'authenticated' OR auth.role() = 'service_role');
-CREATE POLICY "Stock authenticated update" ON stock_items FOR UPDATE USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
-CREATE POLICY "Stock admin delete" ON stock_items FOR DELETE USING (auth.role() = 'service_role');
+-- Profiles RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- Suppliers: public read, authenticated write
-CREATE POLICY "Suppliers public read" ON suppliers FOR SELECT USING (true);
-CREATE POLICY "Suppliers authenticated write" ON suppliers FOR INSERT WITH CHECK (auth.role() = 'authenticated' OR auth.role() = 'service_role');
-CREATE POLICY "Suppliers authenticated update" ON suppliers FOR UPDATE USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
-CREATE POLICY "Suppliers admin delete" ON suppliers FOR DELETE USING (auth.role() = 'service_role');
+-- Policy: Users can read their own profile
+CREATE POLICY "Users can read own profile"
+  ON profiles
+  FOR SELECT
+  USING (auth.uid() = id);
 
--- Movements: public read, authenticated write
-CREATE POLICY "Movements public read" ON stock_movements FOR SELECT USING (true);
-CREATE POLICY "Movements authenticated write" ON stock_movements FOR INSERT WITH CHECK (auth.role() = 'authenticated' OR auth.role() = 'service_role');
+-- Policy: Service role can read any profile
+CREATE POLICY "Service role can read all profiles"
+  ON profiles
+  FOR SELECT
+  USING (auth.role() = 'service_role');
 
--- Scans: authenticated write
-CREATE POLICY "Scans public read" ON scan_history FOR SELECT USING (true);
-CREATE POLICY "Scans authenticated write" ON scan_history FOR INSERT WITH CHECK (auth.role() = 'authenticated' OR auth.role() = 'service_role');
+-- Policy: Service role can insert profiles
+CREATE POLICY "Service role can insert profiles"
+  ON profiles
+  FOR INSERT
+  WITH CHECK (auth.role() = 'service_role');
 
--- Users: only own data
-CREATE POLICY "Users read own" ON users FOR SELECT USING (auth.uid() = id OR auth.role() = 'service_role');
-CREATE POLICY "Users update own" ON users FOR UPDATE USING (auth.uid() = id OR auth.role() = 'service_role');
+-- Audit Logs RLS
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- ── Functions ──
+-- Policy: Only service role can manage audit logs
+CREATE POLICY "Service role can manage audit logs"
+  ON audit_logs
+  USING (auth.role() = 'service_role');
 
--- Auto-update updated_at
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- ── AUTOMATIC CLEANUP ──
+-- Remove expired unused codes after 30 days
+-- (Run this as a scheduled cron job or Supabase Edge Function)
+--
+-- DELETE FROM invite_codes
+-- WHERE used = false
+--   AND expires_at IS NOT NULL
+--   AND expires_at < NOW() - INTERVAL '30 days';
 
--- Apply triggers
-CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_maintenance_updated_at BEFORE UPDATE ON maintenance
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_stock_updated_at BEFORE UPDATE ON stock_items
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+-- ── VERIFICATION QUERIES ──
+-- Run these to verify schema installation:
 
--- ── Storage Bucket for Photos ──
--- Run in Supabase Storage section:
--- INSERT INTO storage.buckets (id, name, public) VALUES ('product-photos', 'product-photos', true);
--- 
--- Storage RLS:
--- CREATE POLICY "Public read product photos" ON storage.objects FOR SELECT USING (bucket_id = 'product-photos');
--- CREATE POLICY "Authenticated upload product photos" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'product-photos' AND auth.role() = 'authenticated');
+-- SELECT table_name, table_type
+-- FROM information_schema.tables
+-- WHERE table_schema = 'public'
+-- ORDER BY table_name;
 
--- ── Realtime ──
--- Enable realtime for tables:
--- ALTER PUBLICATION supabase_realtime ADD TABLE products;
--- ALTER PUBLICATION supabase_realtime ADD TABLE maintenance;
--- ALTER PUBLICATION supabase_realtime ADD TABLE stock_items;
+-- SELECT COUNT(*) AS total_codes FROM invite_codes;
+-- SELECT COUNT(*) AS total_profiles FROM profiles;
+-- SELECT COUNT(*) AS total_audit_logs FROM audit_logs;
