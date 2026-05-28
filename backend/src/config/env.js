@@ -54,6 +54,9 @@ const env = {
   uploadDir: process.env.UPLOAD_DIR || './uploads',
   maxFileSize: parseInt(process.env.MAX_FILE_SIZE, 10) || 5 * 1024 * 1024,
 
+  // Firebase (service account JSON as raw JSON or base64)
+  firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT || '',
+
   // Admin default (will be overridden by DB in production)
   adminPassword: process.env.ADMIN_PASSWORD || 'admin123'
 };
