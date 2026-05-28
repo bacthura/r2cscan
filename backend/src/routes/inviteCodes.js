@@ -21,21 +21,21 @@ const router = Router();
  * Register a new user with invite code
  * Body: { name, email, password, code }
  */
-router.post('/register', authRateLimiter(), controller.registerWithCode);
+router.post('/auth/register', authRateLimiter(), controller.registerWithCode);
 
 /**
  * POST /api/auth/login
  * Authenticate existing user
  * Body: { email, password }
  */
-router.post('/login', authRateLimiter(), controller.login);
+router.post('/auth/login', authRateLimiter(), controller.login);
 
 /**
  * POST /api/auth/firebase
  * Exchange Firebase ID token for custom JWT
  * Body: { idToken }
  */
-router.post('/firebase', controller.firebaseAuth);
+router.post('/auth/firebase', controller.firebaseAuth);
 
 // ── Admin Routes (Protected) ──
 
@@ -45,7 +45,7 @@ router.post('/firebase', controller.firebaseAuth);
  * Body: { expiresInHours?: number, label?: string }
  */
 router.post(
-  '/generate-code',
+  '/admin/generate-code',
   verifyToken,
   requireAdmin,
   controller.generateCode
@@ -57,7 +57,7 @@ router.post(
  * Query: { page, limit, used, search, sortBy, sortOrder }
  */
 router.get(
-  '/codes',
+  '/admin/codes',
   verifyToken,
   requireAdmin,
   controller.listCodes
@@ -68,7 +68,7 @@ router.get(
  * Get a single invite code by ID
  */
 router.get(
-  '/codes/:id',
+  '/admin/codes/:id',
   verifyToken,
   requireAdmin,
   controller.getCode
@@ -79,7 +79,7 @@ router.get(
  * Manually invalidate an invite code
  */
 router.patch(
-  '/codes/:id/invalidate',
+  '/admin/codes/:id/invalidate',
   verifyToken,
   requireAdmin,
   controller.invalidateCode

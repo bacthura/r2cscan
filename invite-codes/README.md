@@ -1,274 +1,197 @@
-# R2C-Scan — Sistema de Convites
+# R2C-Scan - Sistema de Códigos de Convite
 
-Sistema completo de criação de contas com código único de convite/admin.
+Sistema de criação de contas por código de convite para o R2C-Scan.
 
-## Stack
+## Arquitetura
 
-- **Frontend:** React + Vite + Tailwind CSS v4
-- **Backend:** Node.js + Express
-- **Banco:** Supabase (PostgreSQL)
-- **Autenticação:** Firebase Auth + JWT customizado
-- **Deploy Frontend:** Vercel
-- **Deploy Backend:** Render
+### Frontend (`invite-codes/`)
+- **React 19** + **Vite 8**
+- **Tailwind CSS v4** para estilos
+- **react-router-dom v7** para roteamento
+- **react-hot-toast** para notificações
+- **AuthContext** customizado para gerenciamento de estado de autenticação
+- **API Service** customizado (fetch puro) para comunicação com backend
 
-## Estrutura do Projeto
+### Backend (`backend/`)
+- **Express.js** (ESM modules)
+- **Supabase** (PostgreSQL) como banco de dados
+- **Firebase Admin SDK** para autenticação
+- **JWT** para sessões
+- **Zod** para validação de dados
+- **express-rate-limit** para rate limiting
+- **Helmet** para headers de segurança
 
-```
-invite-codes/
-├── src/
-│   ├── components/        # Componentes reutilizáveis
-│   │   ├── LoadingSpinner.jsx
-│   │   └── ProtectedRoute.jsx
-│   ├── context/           # Contextos React
-│   │   └── AuthContext.jsx
-│   ├── lib/               # Utilitários e serviços
-│   │   ├── api.js         # Cliente HTTP (auth + admin)
-│   │   └── firebase.js    # Inicialização Firebase Client
-│   ├── pages/             # Páginas da aplicação
-│   │   ├── Login.jsx
-│   │   ├── Register.jsx
-│   │   └── AdminPanel.jsx
-│   ├── App.jsx            # Rotas e configuração
-│   ├── main.jsx           # Entry point
-│   └── index.css          # Estilos globais Tailwind
-├── .env.example           # Variáveis de ambiente (frontend)
-├── index.html
-├── package.json
-├── vite.config.js
-└── README.md
+## Fluxo Completo
 
-backend/
-├── src/
-│   ├── auth/
-│   │   └── firebaseAdmin.js     # Firebase Admin SDK
-│   ├── config/
-│   │   ├── env.js               # Variáveis de ambiente
-│   │   └── supabase.js          # Cliente Supabase
-│   ├── controllers/
-│   │   ├── inviteCodeController.js  # Handlers HTTP
-│   ├── middleware/
-│   │   ├── auth.js              # JWT + Admin middleware
-│   │   ├── errorHandler.js      # Tratamento de erros
-│   │   └── security.js          # Helmet + Rate Limiting
-│   ├── routes/
-│   │   ├── inviteCodes.js       # Rotas do sistema
-│   ├── schemas/
-│   │   ├── inviteCode.js        # Validação Zod
-│   ├── services/
-│   │   ├── inviteCodeService.js  # Lógica de negócio
-│   └── utils/
-│       └── logger.js            # Logs estruturados
-├── .env.example
-├── package.json
-└── server.js
-```
+### 1. Admin gera código de convite
+1. Admin faz login em `/login`
+2. Acessa painel admin em `/admin`
+3. Clica em "Gerar Código"
+4. Opcionalmente define expiração e label
+5. Código de 6 dígitos numéricos é gerado e auto-copiado
 
-## Funcionamento
-
-### 1. Admin
-- Autenticado via Firebase Auth + JWT
-- Pode **gerar** códigos únicos de 6 dígitos
-- Visualiza: códigos ativos, usados, data de criação, quem utilizou
-- Pode **invalidar** códigos manualmente
-
-### 2. Código de Convite
-- 6 dígitos numéricos aleatórios
-- Único (colisão extremamente rara com retry automático)
-- Expiração opcional (configurável em horas)
-- Utilizado apenas **UMA vez** (transação atômica)
-
-### 3. Regras de Segurança
-- ✅ Impede reutilização do código
-- ✅ Impede criação de conta sem código válido
-- ✅ Valida se o código já foi usado
-- ✅ Valida se o código existe
-- ✅ Valida se expirou
-- ✅ Transação atômica (race condition prevention)
-- ✅ Verificação 100% server-side
-- ✅ Rate limiting em endpoints de auth
-- ✅ Validação com Zod
-- ✅ Logs de segurança
-
-### Fluxo de Cadastro
+### 2. Usuário se cadastra
 1. Usuário acessa `/register`
-2. Digita: nome, email, senha, código de convite
-3. Backend verifica: existe? usado? expirado?
-4. Se válido: cria no Firebase Auth → salva perfil no Supabase → marca código como usado
-5. Retorna JWT para login automático
+2. Informa: nome, email, senha e código de convite
+3. Backend valida:
+   - Código existe, não usado, não expirado
+   - Email não está duplicado
+   - Senha possui requisitos mínimos
+4. Backend cria usuário no Firebase Auth
+5. Backend cria perfil no Supabase (profiles)
+6. Backend marca código como usado (atomic operation)
+7. JWT é gerado para login imediato
 
-## Rotas da API
+## Endpoints da API
 
-### Auth (Público)
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| POST | `/api/auth/register` | Cadastro com código |
-| POST | `/api/auth/login` | Login email/senha |
-| POST | `/api/auth/firebase` | Trocar Firebase ID token por JWT |
+### Autenticação (Público com rate limit)
 
-### Admin (Protegido)
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| POST | `/api/admin/generate-code` | Gerar código |
-| GET | `/api/admin/codes` | Listar códigos |
-| GET | `/api/admin/codes/:id` | Detalhes do código |
-| PATCH | `/api/admin/codes/:id/invalidate` | Invalidar código |
+| Método | Rota                     | Descrição                          |
+|--------|--------------------------|------------------------------------|
+| POST   | `/api/auth/register`     | Registrar com código de convite    |
+| POST   | `/api/auth/login`        | Login com email e senha            |
+| POST   | `/api/auth/firebase`     | Trocar Firebase ID token por JWT   |
 
-## Como Rodar Localmente
+### Admin (Protegido - requer token JWT + role admin)
 
-### Pré-requisitos
-- Node.js 18+
-- Conta [Supabase](https://supabase.com)
-- Projeto [Firebase](https://console.firebase.google.com)
-- Conta [Render](https://render.com) (opcional, para deploy)
-- Conta [Vercel](https://vercel.com) (opcional, para deploy)
+| Método | Rota                                    | Descrição                    |
+|--------|-----------------------------------------|------------------------------|
+| POST   | `/api/admin/generate-code`              | Gerar novo código            |
+| GET    | `/api/admin/codes`                      | Listar códigos (paginado)    |
+| GET    | `/api/admin/codes/:id`                  | Buscar código por ID         |
+| PATCH  | `/api/admin/codes/:id/invalidate`       | Invalidar código manualmente |
 
-### 1. Configurar Supabase
+## Variáveis de Ambiente
 
-1. Crie um projeto no [Supabase](https://app.supabase.com)
-2. Vá em **SQL Editor** e execute o conteúdo de `docs/supabase-schema.sql`
-3. Anote a URL e as chaves (Project Settings → API)
-
-### 2. Configurar Firebase
-
-1. Crie um projeto no [Firebase Console](https://console.firebase.google.com)
-2. Ative **Authentication** → Sign-in method → Email/Password
-3. Vá em **Project Settings** → **Service accounts** → Gerar chave privada
-4. Salve o JSON como variável `FIREBASE_SERVICE_ACCOUNT`
-5. Em **Project Settings** → **General**, copie:
-   - API Key → `VITE_FIREBASE_API_KEY` e `FIREBASE_API_KEY`
-   - Auth Domain → `VITE_FIREBASE_AUTH_DOMAIN`
-   - Project ID → `VITE_FIREBASE_PROJECT_ID`
-
-### 3. Configurar Backend
-
-```bash
-cd backend
-cp .env.example .env
-# Edite .env com suas credenciais
-npm install
-npm run dev
-```
-
-#### Variáveis de Ambiente (Backend)
+### Backend (`backend/.env`)
 
 ```env
 # Supabase
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-
-# Firebase
-FIREBASE_SERVICE_ACCOUNT={"type":"service_account",...}
-FIREBASE_API_KEY=AIzaSy...
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_ANON_KEY=
 
 # JWT
-JWT_SECRET=seu-secret-aqui
+JWT_SECRET=
 JWT_EXPIRES_IN=7d
+
+# Firebase
+FIREBASE_SERVICE_ACCOUNT=
+FIREBASE_API_KEY=
 
 # Server
 PORT=3001
 NODE_ENV=development
-
-# CORS
-CORS_ORIGIN=http://localhost:3000,http://localhost:5173
+CORS_ORIGIN=http://localhost:3000
+ADMIN_PASSWORD=admin123
 ```
 
-### 4. Configurar Frontend
+### Frontend (`invite-codes/.env`)
+
+```env
+VITE_API_URL=/api
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+```
+
+## Como Executar
+
+### Backend
 
 ```bash
-cd invite-codes
+cd backend
 cp .env.example .env
-# Edite .env com suas credenciais Firebase
+# Configure .env com suas credenciais
 npm install
 npm run dev
 ```
 
-#### Variáveis de Ambiente (Frontend)
+### Frontend
 
-```env
-VITE_FIREBASE_API_KEY=AIzaSy...
-VITE_FIREBASE_AUTH_DOMAIN=seu-projeto.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=seu-projeto-id
-VITE_FIREBASE_STORAGE_BUCKET=seu-projeto.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
-VITE_FIREBASE_APP_ID=1:123456789:web:abc123
-VITE_API_URL=/api
+```bash
+cd invite-codes
+cp .env.example .env
+# Configure .env com suas credenciais
+npm install
+npm run dev
 ```
 
-### 5. Criar Primeiro Admin
-
-1. Pelo Firebase Console, crie um usuário manualmente
-2. Execute no Supabase SQL Editor:
-```sql
-INSERT INTO profiles (id, name, email, role)
-VALUES ('<FIREBASE_UID>', 'Admin', 'admin@email.com', 'admin');
-```
-3. Faça login em `/login` e acesse `/admin`
+O frontend estará em `http://localhost:3000` com proxy para backend em `http://localhost:3001`.
 
 ## Deploy
 
-### Backend no Render
+### Supabase Schema
 
-1. Crie um **Web Service** no Render
-2. Conecte ao repositório
-3. Configure:
-   - **Root Directory:** `backend`
-   - **Build Command:** `npm install`
-   - **Start Command:** `node src/server.js`
-4. Adicione todas as variáveis de ambiente
-5. Deploy automático ativado
+Execute o script SQL em `docs/supabase-schema.sql` no SQL Editor do Supabase.
 
-### Frontend na Vercel
+Isso criará as tabelas:
+- `invite_codes` - Armazena os códigos de convite
+- `profiles` - Perfis de usuário (extends Firebase Auth)
+- `audit_logs` - Logs de auditoria de segurança
 
-1. Instale Vercel CLI: `npm i -g vercel`
-2. Faça deploy:
-```bash
-cd invite-codes
-vercel --prod
-```
+### Render (backend)
 
-3. Configure variáveis de ambiente no dashboard da Vercel
-4. Em produção, mude `VITE_API_URL` para a URL do Render
+O arquivo `render.yaml` contém a configuração para deploy no Render.
 
-## Segurança
+## Arquivos do Sistema
 
-- 🔐 Service Account do Firebase apenas no backend
-- 🔐 Chaves sensíveis nunca expostas no frontend
-- 🔐 Rate limiting nos endpoints de auth (5 tentativas / 15 min)
-- 🔐 Rate limiting global (100 req / 15 min)
-- 🔐 Validação Zod em todas as entradas
-- 🔐 Sanitização contra XSS
-- 🔐 Headers de segurança (Helmet)
-- 🔐 CORS configurado
-- 🔐 Race condition prevention (update condicional)
-- 🔐 Logs de auditoria
+### Criados (já existentes no projeto)
+- `backend/src/routes/inviteCodes.js` - Rotas
+- `backend/src/controllers/inviteCodeController.js` - Controllers
+- `backend/src/services/inviteCodeService.js` - Services
+- `backend/src/schemas/inviteCode.js` - Schemas + geração
+- `docs/supabase-schema.sql` - Schema do banco
+- `invite-codes/src/pages/Register.jsx` - Cadastro
+- `invite-codes/src/pages/Login.jsx` - Login
+- `invite-codes/src/pages/AdminPanel.jsx` - Painel admin
+- `invite-codes/src/context/AuthContext.jsx` - Auth context
+- `invite-codes/src/lib/api.js` - API service
+- `invite-codes/src/lib/firebase.js` - Firebase config
+- `invite-codes/src/components/LoadingSpinner.jsx` - Loading
+- `invite-codes/src/components/ProtectedRoute.jsx` - Rota protegida
+- `invite-codes/src/App.jsx` - App com rotas
 
-## Scripts Disponíveis
+### Modificados
+- `backend/src/routes/inviteCodes.js` - Corrigido path das rotas para `/auth/` e `/admin/`
 
-### Backend
-```bash
-npm run dev     # Desenvolvimento com watch
-npm start       # Produção
-npm run lint    # ESLint
-```
+## Funcionalidades Implementadas
 
-### Frontend
-```bash
-npm run dev     # Dev server (porta 3000)
-npm run build   # Build produção
-npm run preview # Preview do build
-```
+- ✅ Geração de códigos únicos de 6 dígitos
+- ✅ Validação server-side com Zod
+- ✅ Proteção contra race condition (update condicional)
+- ✅ Prevenção de reutilização de código
+- ✅ Validação de expiração
+- ✅ Rate limiting em auth endpoints
+- ✅ Sanitização de input (XSS prevention)
+- ✅ Admin middleware com JWT
+- ✅ Logs de auditoria
+- ✅ Paginação, busca e filtros
+- ✅ Copiar código para clipboard
+- ✅ Invalidação manual de códigos
+- ✅ Feedback visual com toasts
+- ✅ Estados de loading e erro
+- ✅ Design responsivo glassmorphism
+- ✅ TypeScript-ready (arquivos .jsx com tipagem)
 
-## Funcionalidades Extras
+## Melhorias Futuras
 
-- ✅ Botão copiar código
-- ✅ Indicador visual de código usado/ativo/expirado
-- ✅ Busca de códigos
-- ✅ Paginação
-- ✅ Filtros (todos/ativos/utilizados)
-- ✅ Stats dashboard
-- ✅ Dark mode com glassmorphism
-- ✅ Animações suaves
-- ✅ Toast notifications
-- ✅ Loading states
-- ✅ Responsivo
+1. **Testes automatizados** - Adicionar testes unitários e de integração
+2. **WebSocket** - Notificações em tempo real quando código for usado
+3. **Bulk generation** - Gerar múltiplos códigos de uma vez
+4. **Export CSV** - Exportar lista de códigos
+5. **Templates de email** - Enviar email com código de convite
+6. **Dashboard** - Gráficos de uso de códigos
+7. **Multi-tenant** - Suporte a múltiplos administradores
+8. **Rate limit por IP** - Tracking mais granular de tentativas
+
+## Riscos e Considerações
+
+- **Firebase Auth** é dependência externa - queda do Firebase impede cadastros
+- **Supabase** é dependência externa - queda do Supabase impede operações
+- **Chave de serviço** (SUPABASE_SERVICE_ROLE_KEY) deve ser mantida em segredo absoluto
+- **JWT_SECRET** deve ser forte e rotacionada periodicamente
+- Códigos têm 10^6 combinações (1 milhão) - suficiente para uso moderado
