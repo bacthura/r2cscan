@@ -1,0 +1,3 @@
+# Placeholder requirements file to satisfy Render's Python detection.
+# Backend is Node.js under the `backend/` directory — no Python dependencies required.
+# If you need Python packages for another service, add them below (one per line).

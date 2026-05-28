@@ -961,13 +961,14 @@
     </div>
     <button class="btn btn-primary" onclick="checkAdminPw()">Entrar</button>
     <button class="btn btn-secondary" style="margin-top:8px" onclick="closeAdminModal()">Cancelar</button>
-    <p style="font-size:.65rem;color:var(--text2);text-align:center;margin-top:10px">Senha padrão: <strong style="color:var(--accent)">admin123</strong></p>
+    <p style="font-size:.65rem;color:var(--text2);text-align:center;margin-top:10px">Senha: definida no backend</p>
   </div>
 </div>
 
 <!-- TOAST -->
 <div id="toast"></div>
 
+<script src="/env.js"></script>
 <script>
 // ═══════════════════════════════════════════
 //  API Service Layer (optional backend connection)
@@ -975,9 +976,10 @@
 //  Falls back gracefully to IndexedDB if backend is offline.
 //  R2C-Scan v2.0
 // ═══════════════════════════════════════════
-const API_BASE = window.location.port === '3001'
-  ? window.location.origin + '/api'
-  : 'http://localhost:3001/api';
+const _DEFAULT_BACKEND = 'https://r2c-scan.onrender.com/api';
+const API_BASE = (window.__ENV && window.__ENV.API_URL)
+  ? (window.__ENV.API_URL.endsWith('/api') ? window.__ENV.API_URL : window.__ENV.API_URL.replace(/\/$/, '') + '/api')
+  : (window.location.port === '3001' ? window.location.origin + '/api' : _DEFAULT_BACKEND);
 
 let apiToken = localStorage.getItem('r2c_api_token') || null;
 
@@ -1157,7 +1159,7 @@ let isAdmin = false;
 let editingId = null;
 let currentDetailId = null;
 let photoDataURL = null;
-const ADMIN_PW = 'admin123';
+const ADMIN_PW = null; // No default password in client; authenticate via backend
 let isLight = false;
 let maintCalendarDate = new Date();
 let maintTab = 'all';
@@ -2254,13 +2256,25 @@ function importData(input) {
 function checkAdmin() { if (isAdmin) return true; openAdminModal(); return false; }
 function openAdminModal() { document.getElementById('modal-admin-login').classList.add('open'); setTimeout(() => document.getElementById('admin-pw-input').focus(), 300); }
 function closeAdminModal() { document.getElementById('modal-admin-login').classList.remove('open'); document.getElementById('admin-pw-input').value = ''; }
-function checkAdminPw() {
-  if (document.getElementById('admin-pw-input').value === ADMIN_PW) {
+async function checkAdminPw() {
+  const pw = document.getElementById('admin-pw-input').value;
+  // Offline fallback (if ADMIN_PW is set)
+  if (ADMIN_PW && pw === ADMIN_PW) {
+    isAdmin = true;
+    closeAdminModal();
+    toast('✓ Acesso admin liberado (offline)');
+    if (currentPage === 'page-admin') renderAdmin();
+    return;
+  }
+
+  // Try backend login
+  try {
+    await api.login(pw);
     isAdmin = true;
     closeAdminModal();
     toast('✓ Acesso admin liberado');
     if (currentPage === 'page-admin') renderAdmin();
-  } else {
+  } catch (err) {
     document.getElementById('admin-pw-input').style.borderColor = 'var(--danger)';
     setTimeout(() => document.getElementById('admin-pw-input').style.borderColor = '', 1000);
     toast('Senha incorreta');
