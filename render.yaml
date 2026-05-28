@@ -1,0 +1,32 @@
+# Render Blueprint Configuration
+# R2C-Scan v2.0 - Deploy entire infrastructure
+services:
+  # ── Backend API ──
+  - type: web
+    name: r2c-scan-api
+    root: backend
+    env: node
+    region: sao-paulo
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node src/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3001"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGIN
+        value: https://r2c-scan.vercel.app,https://r2c-scan.onrender.com
+      - key: ADMIN_PASSWORD
+        sync: false
