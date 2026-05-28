@@ -1,0 +1,40 @@
+name: Deploy to Render
+
+# Dispara um deploy no Render sempre que houver push para `main` ou `R2C-Scan`.
+# Requer que você adicione os secrets `RENDER_API_KEY` e `RENDER_SERVICE_ID`
+# em Settings → Secrets and variables → Actions do repositório.
+
+on:
+  push:
+    branches:
+      - main
+      - R2C-Scan
+
+jobs:
+  trigger_render_deploy:
+    name: Trigger Render Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trigger Render deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          if [ -z "${RENDER_API_KEY}" ] || [ -z "${RENDER_SERVICE_ID}" ]; then
+            echo "Missing RENDER_API_KEY or RENDER_SERVICE_ID secrets"
+            exit 1
+          fi
+          echo "Requesting deploy for service $RENDER_SERVICE_ID..."
+          curl -s -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{}' -o /tmp/render_resp.json
+          cat /tmp/render_resp.json
+          # Fail the job if the response doesn't contain an id
+          if ! grep -q '"id"' /tmp/render_resp.json; then
+            echo "Unexpected response from Render API"
+            exit 1
+          fi

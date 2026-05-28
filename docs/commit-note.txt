@@ -1,0 +1,23 @@
+Commit preparado para execução local
+
+Mensagem sugerida do commit:
+chore: bump backend version to 2.0.1 and add commit note
+
+Arquivos alterados/novos para commitar:
+- backend/package.json (versão 2.0.1)
+- requirements.txt (placeholder)
+- scripts/deploy-all.ps1 (deploy automation)
+
+Observação: Não consigo executar `git commit` aqui (git não está disponível neste ambiente). Rode os comandos abaixo localmente na raiz do projeto:
+
+```powershell
+git add backend/package.json requirements.txt scripts/deploy-all.ps1 docs/commit-note.txt
+git commit -m "chore: bump backend version to 2.0.1 and add commit note"
+git push origin main
+```
+
+Se o Render usa outra branch (ex.: `R2C-Scan`), ajuste o push:
+
+```powershell
+git push origin HEAD:R2C-Scan
+```
