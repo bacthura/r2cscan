@@ -1,4 +1,17 @@
 {
+  "name": "r2c-scan",
+  "version": "2.0.0",
+  "description": "R2C-Scan — Gestão Inteligente de Produtos, Manutenção e Estoque",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "cd backend && node src/server.js",
+    "dev": "cd backend && node --watch src/server.js",
+    "build": "echo 'Static SPA — no build step required'",
+    "lint": "echo 'Lint configured via eslint'",
+    "preview": "npx serve . -p 3000",
+    "vercel-build": "echo 'Static deployment'"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
     "@tanstack/react-query": "^5.100.14",

@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <style>
@@ -137,9 +137,15 @@
     background:#000; aspect-ratio:1/1; width:100%;
     border: 1px solid var(--border);
   }
+  #scanner-wrap video { width:100%; height:100%; object-fit:cover; display:block; }
+  #scanner-wrap canvas { display:none; }
   #scanner-video { width:100%; height:100%; object-fit:cover; display:block; }
   #scanner-canvas { display:none; }
-  .scan-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  /* html5-qrcode scanner container */
+  #scanner-reader { width:100%; height:100%; }
+  #scanner-reader video { width:100%; height:100% !important; object-fit:cover; }
+  #scanner-reader img { display:none; }
+  .scan-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:10; }
   .scan-frame { width:65%; aspect-ratio:1/1; position:relative; }
   .scan-frame::before, .scan-frame::after, .scan-frame .c3, .scan-frame .c4 {
     content:''; position:absolute; width:24px; height:24px; border-color:var(--accent); border-style:solid;
@@ -155,6 +161,11 @@
     box-shadow: 0 0 8px var(--accent);
   }
   @keyframes scanLine { 0%{top:5%} 50%{top:92%} 100%{top:5%} }
+
+  .scanner-loading { text-align:center; padding:20px; color:var(--text2); }
+  .scanner-loading.hidden { display:none; }
+  .scanner-error { color:var(--danger); text-align:center; padding:20px; font-size:.75rem; }
+  .scanner-error button { margin-top:10px; }
 
   .scanner-modes { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
   .mode-btn {
@@ -513,6 +524,12 @@
     <div class="mode-btn" onclick="goPage('page-catalog')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>Catálogo
     </div>
+    <div class="mode-btn" onclick="goPage('page-maint')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>Manutenção
+    </div>
+    <div class="mode-btn" onclick="goPage('page-stock')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Almoxarifado
+    </div>
     <div class="mode-btn" onclick="if(checkAdmin())openAddModal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Cadastrar
     </div>
@@ -537,12 +554,27 @@
     </div>
   </div>
 
+  <!-- Loading state for scanner -->
+  <div id="scanner-loading" style="text-align:center;padding:20px;color:var(--text2)">
+    <div class="ai-spinner" style="margin:0 auto 10px"></div>
+    <p style="font-size:.75rem">Iniciando câmera...</p>
+  </div>
+
   <div id="scanner-wrap">
-    <video id="scanner-video" autoplay playsinline muted></video>
-    <canvas id="scanner-canvas"></canvas>
+    <div id="scanner-reader"></div>
     <div class="scan-overlay">
       <div class="scan-frame"><div class="c3"></div><div class="c4"></div><div class="scan-line"></div></div>
     </div>
+  </div>
+
+  <!-- Scanner action buttons -->
+  <div style="display:flex;gap:8px;margin-top:12px">
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.75rem" onclick="toggleFlash()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Flash
+    </button>
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.75rem" onclick="restartScanner()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Reiniciar
+    </button>
   </div>
 
   <div class="scan-result" id="scan-result-box">
@@ -553,7 +585,7 @@
     </button>
   </div>
 
-  <div id="ai-status">
+  <div id="ai-status" style="display:none">
     <div class="ai-spinner"></div>
     <p><strong id="ai-status-title">Analisando imagem com IA…</strong><span id="ai-status-desc">Aguarde enquanto identificamos o objeto</span></p>
   </div>
@@ -913,9 +945,17 @@
     </div>
     <div class="form-row">
       <div class="form-group"><label>Tipo</label>
-        <select id="mov-type"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
+        <select id="mov-type" onchange="toggleMovementFields()"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
       </div>
       <div class="form-group"><label>Quantidade</label><input type="number" id="mov-qty" value="1" min="1"></div>
+    </div>
+    <div id="mov-quem-pegou-field" class="form-group">
+      <label>Quem Retirou</label>
+      <input type="text" id="mov-responsavel" placeholder="Nome de quem pegou o material">
+    </div>
+    <div id="mov-quem-devolveu-field" class="form-group" style="display:none">
+      <label>Quem Devolveu</label>
+      <input type="text" id="mov-devolveu" placeholder="Nome de quem devolveu">
     </div>
     <div class="form-group"><label>Motivo / Observação</label><input type="text" id="mov-reason" placeholder="Ex: Reposição de estoque"></div>
     <button class="btn btn-primary" onclick="saveMovement()">Registrar Movimentação</button>
@@ -923,7 +963,6 @@
   </div>
 </div>
 
-<!-- MODAL FORNECEDOR -->
 <div class="modal-overlay" id="modal-supplier">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -949,19 +988,45 @@
   </div>
 </div>
 
-<!-- MODAL ADMIN LOGIN -->
-<div class="modal-overlay" id="modal-admin-login">
+<!-- MODAL LOGIN (Firebase - Email/Password) -->
+<div class="modal-overlay" id="modal-login">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <h2 style="font-family:var(--font-head);font-size:1.1rem;margin-bottom:6px">🔐 Acesso Admin</h2>
-    <p style="font-size:.75rem;color:var(--text2);margin-bottom:14px">Digite a senha para acessar o painel administrativo</p>
+    <h2 style="font-family:var(--font-head);font-size:1.1rem;margin-bottom:6px">🔐 Login</h2>
+    <p style="font-size:.75rem;color:var(--text2);margin-bottom:14px">Faça login com seu email e senha</p>
+    
+    <!-- Login Error -->
+    <div id="login-error" style="display:none;background:rgba(255,68,102,.1);border:1px solid var(--danger);border-radius:8px;padding:10px;margin-bottom:12px;font-size:.72rem;color:var(--danger)"></div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email-input" placeholder="seu@email.com" autocomplete="email" onkeypress="if(event.key==='Enter')document.getElementById('login-pw-input').focus()">
+    </div>
     <div class="form-group">
       <label>Senha</label>
-      <input type="password" id="admin-pw-input" placeholder="••••••••" onkeypress="if(event.key==='Enter')checkAdminPw()">
+      <input type="password" id="login-pw-input" placeholder="••••••••" autocomplete="current-password" onkeypress="if(event.key==='Enter')handleLogin()">
     </div>
-    <button class="btn btn-primary" onclick="checkAdminPw()">Entrar</button>
-    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeAdminModal()">Cancelar</button>
-    <p style="font-size:.65rem;color:var(--text2);text-align:center;margin-top:10px">Senha: definida no backend</p>
+
+    <!-- Loading state -->
+    <div id="login-loading" style="display:none;text-align:center;padding:10px">
+      <div class="ai-spinner" style="margin:0 auto 8px"></div>
+      <p style="font-size:.7rem;color:var(--text2)">Autenticando...</p>
+    </div>
+
+    <button class="btn btn-primary" id="login-btn" onclick="handleLogin()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg> Entrar
+    </button>
+
+    <!-- User info when logged in -->
+    <div id="login-user-info" style="display:none;text-align:center;padding:10px 0">
+      <p style="font-size:.8rem;color:var(--accent);margin-bottom:6px">✓ Conectado</p>
+      <p id="login-user-email" style="font-size:.7rem;color:var(--text2)"></p>
+      <button class="btn btn-secondary" style="margin-top:10px;padding:8px;font-size:.75rem" onclick="handleLogout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg> Sair
+      </button>
+    </div>
+
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeLoginModal()">Cancelar</button>
   </div>
 </div>
 
@@ -1965,21 +2030,33 @@ async function populateMovSelect() {
   sel.innerHTML = all.map(i => `<option value="${i.id}" ${i.id === movItemId ? 'selected' : ''}>${i.name}</option>`).join('');
 }
 
+function toggleMovementFields() {
+  const type = document.getElementById('mov-type').value;
+  document.getElementById('mov-quem-pegou-field').style.display = type === 'saida' ? 'block' : 'none';
+  document.getElementById('mov-quem-devolveu-field').style.display = type === 'entrada' ? 'block' : 'none';
+}
+
 async function saveMovement() {
   const itemId = document.getElementById('mov-item').value;
   if (!itemId) { toast('Selecione um item'); return; }
   const type = document.getElementById('mov-type').value;
   const qty = parseInt(document.getElementById('mov-qty').value) || 1;
+  const responsavel = document.getElementById('mov-responsavel').value.trim();
+  const devolvidoPor = document.getElementById('mov-devolveu').value.trim();
   const reason = document.getElementById('mov-reason').value.trim() || (type === 'entrada' ? 'Entrada manual' : 'Saída manual');
   const item = await dbGetById(STORE_STOCK, itemId);
   if (!item) { toast('Item não encontrado'); return; }
-  if (type === 'saida' && item.qty < qty) { toast('Quantidade insuficiente em estoque'); return; }
+  if (type === 'saida') {
+    if (!responsavel) { toast('Informe quem retirou o material'); return; }
+    if (item.qty < qty) { toast('Quantidade insuficiente em estoque'); return; }
+  }
+  if (type === 'entrada' && !devolvidoPor) { toast('Informe quem devolveu o material'); return; }
 
   item.qty += type === 'entrada' ? qty : -qty;
   item.updatedAt = Date.now();
   await dbPut(STORE_STOCK, item);
 
-  const mov = { id: `mov_${Date.now()}`, itemId, itemName: item.name, type, qty, reason, timestamp: Date.now() };
+  const mov = { id: `mov_${Date.now()}`, itemId, itemName: item.name, type, qty, reason, responsavel: responsavel || '', devolvidoPor: devolvidoPor || '', timestamp: Date.now() };
   const movs = JSON.parse(localStorage.getItem('r2c_movements') || '[]');
   movs.unshift(mov);
   localStorage.setItem('r2c_movements', JSON.stringify(movs.slice(0, 500)));
@@ -1997,13 +2074,22 @@ async function renderMovements() {
     list.innerHTML = `<div class="empty-state"><p>Nenhuma movimentação registrada</p></div>`;
     return;
   }
-  list.innerHTML = movs.map(m => `<div class="mini-card">
-    <div class="mc-icon" style="background:${m.type==='entrada'?'rgba(0,245,160,.1)':'rgba(255,68,102,.1)'}">${m.type==='entrada'?'📥':'📤'}</div>
-    <div class="mc-body">
-      <div class="mc-title">${m.itemName} <span style="color:${m.type==='entrada'?'var(--accent)':'var(--danger)'}">${m.type==='entrada'?'+':'-'}${m.qty}</span></div>
-      <div class="mc-sub">${m.reason} · ${new Date(m.timestamp).toLocaleString('pt-BR')}</div>
-    </div>
-  </div>`).join('');
+  list.innerHTML = movs.map(m => {
+    let extraInfo = '';
+    if (m.type === 'saida' && m.responsavel) {
+      extraInfo = ` · Retirado por: ${m.responsavel}`;
+    }
+    if (m.type === 'entrada' && m.devolvidoPor) {
+      extraInfo = ` · Devolvido por: ${m.devolvidoPor}`;
+    }
+    return `<div class="mini-card">
+      <div class="mc-icon" style="background:${m.type==='entrada'?'rgba(0,245,160,.1)':'rgba(255,68,102,.1)'}">${m.type==='entrada'?'📥':'📤'}</div>
+      <div class="mc-body">
+        <div class="mc-title">${m.itemName} <span style="color:${m.type==='entrada'?'var(--accent)':'var(--danger)'}">${m.type==='entrada'?'+':'-'}${m.qty}</span></div>
+        <div class="mc-sub">${m.reason}${extraInfo} · ${new Date(m.timestamp).toLocaleString('pt-BR')}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════
@@ -2251,34 +2337,173 @@ function importData(input) {
 }
 
 // ═══════════════════════════════════════════
-//  ADMIN AUTH
+//  FIREBASE AUTH (Login via Firebase email/password)
 // ═══════════════════════════════════════════
-function checkAdmin() { if (isAdmin) return true; openAdminModal(); return false; }
-function openAdminModal() { document.getElementById('modal-admin-login').classList.add('open'); setTimeout(() => document.getElementById('admin-pw-input').focus(), 300); }
-function closeAdminModal() { document.getElementById('modal-admin-login').classList.remove('open'); document.getElementById('admin-pw-input').value = ''; }
-async function checkAdminPw() {
-  const pw = document.getElementById('admin-pw-input').value;
-  // Offline fallback (if ADMIN_PW is set)
-  if (ADMIN_PW && pw === ADMIN_PW) {
-    isAdmin = true;
-    closeAdminModal();
-    toast('✓ Acesso admin liberado (offline)');
-    if (currentPage === 'page-admin') renderAdmin();
+
+// Firebase configuration
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyCD3r40576QC0tbHO2HIHNHc_BlOA9Qfr0',
+  authDomain: 'r2cs-8b273.firebaseapp.com',
+  projectId: 'r2cs-8b273',
+  storageBucket: 'r2cs-8b273.firebasestorage.app',
+  messagingSenderId: '933095320860',
+  appId: '1:933095320860:web:3e96078c459985ce22ded9'
+};
+
+let firebaseAuth = null;
+let firebaseUser = null;
+
+/**
+ * Initialize Firebase Auth SDK
+ */
+async function initFirebaseAuth() {
+  if (window.firebase && window.firebase.auth) {
+    if (!window.firebase.apps.length) {
+      window.firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    firebaseAuth = window.firebase.auth();
+    firebaseAuth.onAuthStateChanged(user => {
+      firebaseUser = user;
+      updateLoginUI();
+      if (user) {
+        console.log('✅ Firebase user:', user.email);
+        isAdmin = true;
+      } else {
+        isAdmin = false;
+      }
+    });
+    return true;
+  }
+  return false;
+}
+
+// Try to load Firebase from CDN if not available
+if (typeof firebase === 'undefined' || !firebase.auth) {
+  // Firebase loaded via CDN already - if not, try to load it
+  setTimeout(() => {
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      initFirebaseAuth();
+    }
+  }, 2000);
+} else {
+  initFirebaseAuth();
+}
+
+/**
+ * Open login modal (Firebase email/password)
+ */
+function checkAdmin() {
+  if (firebaseUser) return true;
+  openLoginModal();
+  return false;
+}
+
+function openAdminModal() {
+  openLoginModal();
+}
+
+function openLoginModal() {
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('modal-login').classList.add('open');
+  setTimeout(() => document.getElementById('login-email-input')?.focus(), 300);
+}
+
+function closeLoginModal() {
+  document.getElementById('modal-login').classList.remove('open');
+}
+
+/**
+ * Handle login with Firebase email/password
+ */
+async function handleLogin() {
+  const email = document.getElementById('login-email-input').value.trim();
+  const password = document.getElementById('login-pw-input').value;
+  const errorEl = document.getElementById('login-error');
+  const loadingEl = document.getElementById('login-loading');
+  const btn = document.getElementById('login-btn');
+
+  if (!email || !password) {
+    errorEl.textContent = 'Preencha email e senha';
+    errorEl.style.display = 'block';
     return;
   }
 
-  // Try backend login
+  // Show loading
+  btn.style.display = 'none';
+  loadingEl.style.display = 'block';
+  errorEl.style.display = 'none';
+
   try {
-    await api.login(pw);
-    isAdmin = true;
-    closeAdminModal();
-    toast('✓ Acesso admin liberado');
+    // Wait for Firebase to load
+    if (!firebaseAuth) {
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        await initFirebaseAuth();
+      } else {
+        throw new Error('Firebase não disponível. Tente novamente.');
+      }
+    }
+    
+    const result = await firebaseAuth.signInWithEmailAndPassword(email, password);
+    firebaseUser = result.user;
+    closeLoginModal();
+    toast('✓ Login realizado!', 'success');
     if (currentPage === 'page-admin') renderAdmin();
   } catch (err) {
-    document.getElementById('admin-pw-input').style.borderColor = 'var(--danger)';
-    setTimeout(() => document.getElementById('admin-pw-input').style.borderColor = '', 1000);
-    toast('Senha incorreta');
+    const errorMap = {
+      'auth/user-not-found': 'Usuário não encontrado',
+      'auth/wrong-password': 'Senha incorreta',
+      'auth/invalid-credential': 'Email ou senha inválidos',
+      'auth/invalid-email': 'Email inválido',
+      'auth/user-disabled': 'Usuário desabilitado',
+      'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde'
+    };
+    errorEl.textContent = errorMap[err.code] || err.message || 'Erro ao fazer login';
+    errorEl.style.display = 'block';
+  } finally {
+    btn.style.display = 'flex';
+    loadingEl.style.display = 'none';
   }
+}
+
+/**
+ * Handle logout
+ */
+async function handleLogout() {
+  if (firebaseAuth) {
+    await firebaseAuth.signOut();
+    firebaseUser = null;
+    isAdmin = false;
+    toast('Sessão encerrada', 'info');
+    updateLoginUI();
+  }
+}
+
+/**
+ * Update login modal UI based on auth state
+ */
+function updateLoginUI() {
+  const loginForm = document.getElementById('login-btn');
+  const loginUserInfo = document.getElementById('login-user-info');
+  const userEmail = document.getElementById('login-user-email');
+
+  if (firebaseUser) {
+    if (loginForm) loginForm.style.display = 'none';
+    if (loginUserInfo) {
+      loginUserInfo.style.display = 'block';
+      userEmail.textContent = firebaseUser.email;
+    }
+  } else {
+    if (loginForm) loginForm.style.display = 'flex';
+    if (loginUserInfo) loginUserInfo.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════
+//  ADMIN ACCESS (driven by Firebase Auth)
+// ═══════════════════════════════════════════
+async function checkAdminPw() {
+  toast('Use o login com email e senha', 'info');
+  openLoginModal();
 }
 
 // ═══════════════════════════════════════════
@@ -2353,7 +2578,7 @@ async function init() {
 
 // Close modals on overlay click
 document.getElementById('modal-add').addEventListener('click', e => { if(e.target === e.currentTarget) closeAddModal(); });
-document.getElementById('modal-admin-login').addEventListener('click', e => { if(e.target === e.currentTarget) closeAdminModal(); });
+document.getElementById('modal-login').addEventListener('click', e => { if(e.target === e.currentTarget) closeLoginModal(); });
 document.getElementById('modal-maint').addEventListener('click', e => { if(e.target === e.currentTarget) closeMaintModal(); });
 document.getElementById('modal-stock').addEventListener('click', e => { if(e.target === e.currentTarget) closeStockModal(); });
 document.getElementById('modal-movement').addEventListener('click', e => { if(e.target === e.currentTarget) closeMovementModal(); });

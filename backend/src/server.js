@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import env from './config/env.js';
 import { securityHeaders, apiRateLimiter, sanitizeInput } from './middleware/security.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
+import logger from './utils/logger.js';
 
 // Routes
 import authRoutes from './routes/auth.js';

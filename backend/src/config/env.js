@@ -32,6 +32,12 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
+// Validação da senha admin em produção
+if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_PASSWORD) {
+  console.error('❌ ADMIN_PASSWORD é obrigatório em produção!');
+  process.exit(1);
+}
+
 const env = {
   // Supabase
   supabaseUrl: process.env.SUPABASE_URL || '',
@@ -64,8 +70,9 @@ const env = {
   // Firebase Web API Key (for password verification via REST API)
   firebaseApiKey: process.env.FIREBASE_API_KEY || '',
 
-  // Admin default (will be overridden by DB in production)
-  adminPassword: process.env.ADMIN_PASSWORD || 'admin123'
+  // Admin password from environment only — NO hardcoded default
+  // Set ADMIN_PASSWORD in production environment variables
+  adminPassword: process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? null : 'admin1245')
 };
 
 export default env;
