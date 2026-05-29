@@ -10,20 +10,24 @@ import { dirname, resolve } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Load .env file if it exists (development), safe to ignore on Render
 dotenv.config({ path: resolve(__dirname, '../../.env') });
 
-const requiredVars = [
+// Optional env vars - server will warn but NOT crash in any environment
+// This allows the app to start on Render even without all env vars configured
+// Missing features will gracefully degrade
+const optionalVars = [
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'JWT_SECRET'
+  'JWT_SECRET',
+  'FIREBASE_SERVICE_ACCOUNT',
+  'FIREBASE_API_KEY'
 ];
 
-// Validate required vars in production
 if (process.env.NODE_ENV === 'production') {
-  for (const v of requiredVars) {
+  for (const v of optionalVars) {
     if (!process.env[v]) {
-      console.error(`❌ Missing required env var: ${v}`);
-      process.exit(1);
+      console.warn(`⚠️  Missing optional env var: ${v} - related features will be unavailable`);
     }
   }
 }
