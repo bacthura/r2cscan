@@ -1,2 +1,22 @@
 .vercel
 node_modules
+
+# Variáveis de ambiente / secrets (NUNCA commitar)
+.env
+.env.local
+.env.*.local
+backend/.env
+invite-codes/.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Artefatos de build do app de convites
+invite-codes/dist
