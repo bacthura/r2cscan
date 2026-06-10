@@ -15,6 +15,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Firebase Auth SDK (compat) — necessário para o login dos funcionários -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
 <style>
   :root {
@@ -462,6 +465,39 @@
 </style>
 </head>
 <body>
+
+<!-- AUTH GATE — acesso restrito a funcionários (bloqueia todo o app até login) -->
+<div id="auth-gate" style="position:fixed;inset:0;z-index:100000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+  <!-- Estado: verificando sessão -->
+  <div id="gate-loading" style="text-align:center">
+    <div class="ai-spinner" style="width:32px;height:32px;margin:0 auto 14px"></div>
+    <p style="font-size:.8rem;color:var(--text2)">Verificando acesso...</p>
+  </div>
+  <!-- Estado: formulário de login -->
+  <div id="gate-form" style="display:none;width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:22px">
+      <h1 style="font-family:var(--font-head);font-size:1.7rem;font-weight:800;color:var(--accent)">R2C-Scan</h1>
+      <p style="font-size:.78rem;color:var(--text2);margin-top:8px">🔒 Acesso restrito aos funcionários</p>
+    </div>
+    <div id="gate-error" style="display:none;background:rgba(255,68,102,.1);border:1px solid var(--danger);border-radius:8px;padding:10px;margin-bottom:14px;font-size:.72rem;color:var(--danger)"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="gate-email" placeholder="seu@email.com" autocomplete="email" onkeypress="if(event.key==='Enter')document.getElementById('gate-pw').focus()">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="gate-pw" placeholder="••••••••" autocomplete="current-password" onkeypress="if(event.key==='Enter')handleGateLogin()">
+    </div>
+    <div id="gate-loading-btn" style="display:none;text-align:center;padding:10px">
+      <div class="ai-spinner" style="margin:0 auto 8px"></div>
+      <p style="font-size:.7rem;color:var(--text2)">Autenticando...</p>
+    </div>
+    <button class="btn btn-primary" id="gate-btn" style="width:100%" onclick="handleGateLogin()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg> Entrar
+    </button>
+    <p style="font-size:.68rem;color:var(--text2);text-align:center;margin-top:16px">Não tem acesso? Solicite um convite ao administrador.</p>
+  </div>
+</div>
 
 <!-- SPLASH -->
 <div id="splash">
@@ -2365,6 +2401,7 @@ async function initFirebaseAuth() {
     firebaseAuth.onAuthStateChanged(user => {
       firebaseUser = user;
       updateLoginUI();
+      updateAuthGate();
       if (user) {
         console.log('✅ Firebase user:', user.email);
         isAdmin = true;
@@ -2377,16 +2414,91 @@ async function initFirebaseAuth() {
   return false;
 }
 
-// Try to load Firebase from CDN if not available
-if (typeof firebase === 'undefined' || !firebase.auth) {
-  // Firebase loaded via CDN already - if not, try to load it
-  setTimeout(() => {
-    if (typeof firebase !== 'undefined' && firebase.auth) {
-      initFirebaseAuth();
-    }
-  }, 2000);
-} else {
+// O SDK do Firebase é carregado via CDN no <head>. Inicializa assim que disponível.
+let authResolved = false;
+if (typeof firebase !== 'undefined' && firebase.auth) {
   initFirebaseAuth();
+} else {
+  // Retry curto caso o SDK ainda esteja carregando
+  let _fbTries = 0;
+  const _fbTimer = setInterval(() => {
+    _fbTries++;
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      clearInterval(_fbTimer);
+      initFirebaseAuth();
+    } else if (_fbTries >= 10) {
+      clearInterval(_fbTimer);
+    }
+  }, 500);
+}
+
+// Segurança: se a sessão não resolver em 6s, libera o formulário de login
+setTimeout(() => { if (!authResolved) { firebaseUser = null; updateAuthGate(); } }, 6000);
+
+/**
+ * Mostra/esconde a tela de login que bloqueia o app (acesso restrito a funcionários)
+ */
+function updateAuthGate() {
+  const gate = document.getElementById('auth-gate');
+  if (!gate) return;
+  authResolved = true;
+  const loading = document.getElementById('gate-loading');
+  const form = document.getElementById('gate-form');
+  if (firebaseUser) {
+    gate.style.display = 'none';
+  } else {
+    gate.style.display = 'flex';
+    if (loading) loading.style.display = 'none';
+    if (form) form.style.display = 'block';
+    setTimeout(() => document.getElementById('gate-email')?.focus(), 100);
+  }
+}
+
+/**
+ * Login pela tela de bloqueio (Firebase email/senha)
+ */
+async function handleGateLogin() {
+  const email = document.getElementById('gate-email').value.trim();
+  const password = document.getElementById('gate-pw').value;
+  const errorEl = document.getElementById('gate-error');
+  const btn = document.getElementById('gate-btn');
+  const loadingBtn = document.getElementById('gate-loading-btn');
+
+  if (!email || !password) {
+    errorEl.textContent = 'Preencha email e senha';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.style.display = 'none';
+  loadingBtn.style.display = 'block';
+  errorEl.style.display = 'none';
+
+  try {
+    if (!firebaseAuth) {
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        await initFirebaseAuth();
+      } else {
+        throw new Error('Serviço de login indisponível. Recarregue a página.');
+      }
+    }
+    await firebaseAuth.signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged esconde o gate automaticamente
+  } catch (err) {
+    const errorMap = {
+      'auth/user-not-found': 'Funcionário não encontrado',
+      'auth/wrong-password': 'Senha incorreta',
+      'auth/invalid-credential': 'Email ou senha inválidos',
+      'auth/invalid-email': 'Email inválido',
+      'auth/user-disabled': 'Acesso desativado',
+      'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos'
+    };
+    errorEl.textContent = errorMap[err.code] || err.message || 'Erro ao entrar';
+    errorEl.style.display = 'block';
+  } finally {
+    btn.style.display = 'flex';
+    loadingBtn.style.display = 'none';
+  }
 }
 
 /**
