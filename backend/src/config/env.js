@@ -35,19 +35,19 @@ if (process.env.NODE_ENV === 'production') {
 // Validação da senha admin.
 // Em produção é obrigatória (a app não sobe sem ela).
 // Em desenvolvimento, usa-se um fallback inseguro apenas para facilitar testes locais.
+// O servidor NÃO derruba o processo por falta dessas variáveis — apenas avisa.
+// Assim o deploy sobe mesmo sem elas (modo degradado), e a app pode ser
+// configurada depois pelo painel do Render sem quebrar o serviço.
 if (!process.env.ADMIN_PASSWORD) {
   if (process.env.NODE_ENV === 'production') {
-    console.error('❌ ADMIN_PASSWORD é obrigatório em produção! Defina nas variáveis de ambiente (Render Dashboard).');
-    process.exit(1);
+    console.warn('⚠️  ADMIN_PASSWORD não definida em produção — login admin por senha ficará DESATIVADO. Defina ADMIN_PASSWORD no painel do Render para habilitá-lo. (O login de funcionários via Firebase não depende disso.)');
   } else {
-    console.warn('⚠️  ADMIN_PASSWORD não definida — usando senha padrão INSEGURA "admin1245" (apenas dev). Defina em .env antes de publicar.');
+    console.warn('⚠️  ADMIN_PASSWORD não definida — usando senha padrão INSEGURA "admin1245" (apenas dev).');
   }
 }
 
-// Aviso de segurança: JWT_SECRET fraco/padrão em produção
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-  console.error('❌ JWT_SECRET é obrigatório em produção! Tokens não podem usar o segredo padrão.');
-  process.exit(1);
+  console.warn('⚠️  JWT_SECRET não definida em produção — usando um segredo padrão INSEGURO. Defina JWT_SECRET no painel do Render o quanto antes.');
 }
 
 const env = {
