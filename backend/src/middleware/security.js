@@ -50,19 +50,39 @@ export function authRateLimiter() {
 }
 
 /**
- * Sanitize request body to prevent XSS
+ * Remove vetores de XSS comuns de uma string.
+ */
+function sanitizeString(value) {
+  return value
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<\/?\s*(iframe|object|embed)\b[^>]*>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/on\w+\s*=\s*'[^']*'/gi, '');
+}
+
+/**
+ * Percorre recursivamente strings, objetos e arrays sanitizando o conteúdo.
+ * Limita a profundidade para evitar estouro de pilha com payloads maliciosos.
+ */
+function sanitizeValue(value, depth = 0) {
+  if (depth > 6) return value;
+  if (typeof value === 'string') return sanitizeString(value);
+  if (Array.isArray(value)) return value.map((v) => sanitizeValue(v, depth + 1));
+  if (value && typeof value === 'object') {
+    for (const key of Object.keys(value)) {
+      value[key] = sanitizeValue(value[key], depth + 1);
+    }
+  }
+  return value;
+}
+
+/**
+ * Sanitize request body (inclusive aninhado) para mitigar XSS.
  */
 export function sanitizeInput(req, res, next) {
-  if (req.body) {
-    for (const key in req.body) {
-      if (typeof req.body[key] === 'string') {
-        // Remove HTML tags from string inputs
-        req.body[key] = req.body[key]
-          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-          .replace(/on\w+="[^"]*"/gi, '')
-          .replace(/on\w+='[^']*'/gi, '');
-      }
-    }
+  if (req.body && typeof req.body === 'object') {
+    req.body = sanitizeValue(req.body);
   }
   next();
 }

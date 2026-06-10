@@ -32,9 +32,21 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-// Validação da senha admin em produção
-if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_PASSWORD) {
-  console.error('❌ ADMIN_PASSWORD é obrigatório em produção!');
+// Validação da senha admin.
+// Em produção é obrigatória (a app não sobe sem ela).
+// Em desenvolvimento, usa-se um fallback inseguro apenas para facilitar testes locais.
+if (!process.env.ADMIN_PASSWORD) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ ADMIN_PASSWORD é obrigatório em produção! Defina nas variáveis de ambiente (Render Dashboard).');
+    process.exit(1);
+  } else {
+    console.warn('⚠️  ADMIN_PASSWORD não definida — usando senha padrão INSEGURA "admin1245" (apenas dev). Defina em .env antes de publicar.');
+  }
+}
+
+// Aviso de segurança: JWT_SECRET fraco/padrão em produção
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('❌ JWT_SECRET é obrigatório em produção! Tokens não podem usar o segredo padrão.');
   process.exit(1);
 }
 

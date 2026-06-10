@@ -84,12 +84,14 @@ export const products = {
     return query(supabase => supabase.from(TABLES.products).delete().eq('id', id));
   },
 
-  async search(query) {
-    const supabase = getSupabaseAdmin();
+  async search(term) {
+    // Escapa caracteres especiais do PostgREST (vírgula e %) para evitar
+    // quebra do filtro .or() e injeção de operadores.
+    const safe = String(term).replace(/[%,]/g, '');
     return query(supabase =>
       supabase.from(TABLES.products)
         .select('*')
-        .or(`name.ilike.%${query}%,sku.ilike.%${query}%,category.ilike.%${query}%`)
+        .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%,category.ilike.%${safe}%`)
         .order('created_at', { ascending: false })
         .limit(50)
     );

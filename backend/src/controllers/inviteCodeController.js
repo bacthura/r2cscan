@@ -56,7 +56,10 @@ export async function registerWithCode(req, res, next) {
     // 2. Create user in Firebase Auth
     const firebaseAdmin = getFirebaseAdmin();
     if (!firebaseAdmin) {
-      throw new Error('Firebase não configurado');
+      return res.status(503).json({
+        success: false,
+        error: 'Cadastro indisponível: autenticação não configurada no servidor'
+      });
     }
 
     let firebaseUser;
@@ -154,7 +157,10 @@ export async function login(req, res, next) {
     // Auth REST API for sign-in verification.
     const firebaseAdmin = getFirebaseAdmin();
     if (!firebaseAdmin) {
-      throw new Error('Firebase não configurado');
+      return res.status(503).json({
+        success: false,
+        error: 'Login indisponível: autenticação não configurada no servidor'
+      });
     }
 
     // Get user by email from Firebase
@@ -325,7 +331,10 @@ export async function firebaseAuth(req, res, next) {
 
     const firebaseAdmin = getFirebaseAdmin();
     if (!firebaseAdmin) {
-      throw new Error('Firebase não configurado');
+      return res.status(503).json({
+        success: false,
+        error: 'Autenticação não configurada no servidor'
+      });
     }
 
     // Verify the Firebase ID token

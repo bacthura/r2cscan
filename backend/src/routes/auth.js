@@ -10,9 +10,15 @@ import { authRateLimiter } from '../middleware/security.js';
 
 const router = Router();
 
-// POST /api/auth/login - Admin login
-router.post('/login', authRateLimiter(), asyncHandler(async (req, res) => {
-  const { password } = req.body;
+// POST /api/auth/login - Admin login (somente senha).
+// Se o body contiver "email", trata-se de login de usuário comum:
+// delegamos via next() para o handler de usuários (rotas de invite codes),
+// que está registrado depois no mesmo caminho /api/auth/login.
+router.post('/login', authRateLimiter(), asyncHandler(async (req, res, next) => {
+  const { email, password } = req.body;
+  if (email) {
+    return next();
+  }
   if (!password) {
     throw new AppError('Senha é obrigatória', 400, 'MISSING_PASSWORD');
   }
