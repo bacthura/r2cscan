@@ -15,9 +15,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<!-- Firebase Auth SDK (compat) — necessário para o login dos funcionários -->
+<!-- Firebase SDK (compat) — login dos funcionários + Firestore (controle de acesso) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <style>
   :root {
@@ -473,8 +474,9 @@
     <div class="ai-spinner" style="width:32px;height:32px;margin:0 auto 14px"></div>
     <p style="font-size:.8rem;color:var(--text2)">Verificando acesso...</p>
   </div>
-  <!-- Estado: formulário de login -->
-  <div id="gate-form" style="display:none;width:100%;max-width:360px">
+  <!-- Cabeçalho comum -->
+  <!-- Tela: LOGIN -->
+  <div id="gate-login" style="display:none;width:100%;max-width:360px">
     <div style="text-align:center;margin-bottom:22px">
       <h1 style="font-family:var(--font-head);font-size:1.7rem;font-weight:800;color:var(--accent)">R2C-Scan</h1>
       <p style="font-size:.78rem;color:var(--text2);margin-top:8px">🔒 Acesso restrito aos funcionários</p>
@@ -495,7 +497,41 @@
     <button class="btn btn-primary" id="gate-btn" style="width:100%" onclick="handleGateLogin()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg> Entrar
     </button>
-    <p style="font-size:.68rem;color:var(--text2);text-align:center;margin-top:16px">Não tem acesso? Solicite um convite ao administrador.</p>
+    <p style="font-size:.72rem;color:var(--text2);text-align:center;margin-top:16px">Não tem acesso? <a href="#" onclick="gateShow('register');return false" style="color:var(--accent);text-decoration:none;font-weight:600">Pedir acesso</a></p>
+  </div>
+
+  <!-- Tela: CADASTRO (funcionário pede acesso) -->
+  <div id="gate-register" style="display:none;width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:22px">
+      <h1 style="font-family:var(--font-head);font-size:1.7rem;font-weight:800;color:var(--accent)">Pedir acesso</h1>
+      <p style="font-size:.78rem;color:var(--text2);margin-top:8px">Seu cadastro será liberado após aprovação do administrador.</p>
+    </div>
+    <div id="reg-error" style="display:none;background:rgba(255,68,102,.1);border:1px solid var(--danger);border-radius:8px;padding:10px;margin-bottom:14px;font-size:.72rem;color:var(--danger)"></div>
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="reg-name" placeholder="Seu nome" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="reg-email" placeholder="seu@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="reg-pw" placeholder="mínimo 6 caracteres" autocomplete="new-password" onkeypress="if(event.key==='Enter')handleGateRegister()">
+    </div>
+    <div id="reg-loading" style="display:none;text-align:center;padding:10px">
+      <div class="ai-spinner" style="margin:0 auto 8px"></div>
+      <p style="font-size:.7rem;color:var(--text2)">Enviando...</p>
+    </div>
+    <button class="btn btn-primary" id="reg-btn" style="width:100%" onclick="handleGateRegister()">Pedir acesso</button>
+    <p style="font-size:.72rem;color:var(--text2);text-align:center;margin-top:16px">Já tem conta? <a href="#" onclick="gateShow('login');return false" style="color:var(--accent);text-decoration:none;font-weight:600">Entrar</a></p>
+  </div>
+
+  <!-- Tela: STATUS (pendente / desativado) -->
+  <div id="gate-status" style="display:none;width:100%;max-width:360px;text-align:center">
+    <h1 style="font-family:var(--font-head);font-size:1.5rem;font-weight:800;color:var(--accent);margin-bottom:16px">R2C-Scan</h1>
+    <p id="gate-status-msg" style="font-size:.9rem;color:var(--text);line-height:1.6;margin-bottom:22px"></p>
+    <button class="btn btn-secondary" style="width:100%" onclick="handleLogout()">Sair</button>
   </div>
 </div>
 
@@ -2388,9 +2424,46 @@ const FIREBASE_CONFIG = {
 
 let firebaseAuth = null;
 let firebaseUser = null;
+let fsdb = null;          // Firestore — banco de controle de acesso
+let userProfile = null;  // perfil do usuário logado: { role, status, permissions, ... }
+
+// ── Bootstrap do admin-mestre ──
+// Emails desta lista são SEMPRE admin (para você nunca ficar trancado pra fora).
+// Troque pelo seu email de administrador.
+const BOOTSTRAP_ADMIN_EMAILS = ['jcaesposito@gmail.com'];
+
+// Módulos controlados por permissão (área granular)
+const ACCESS_MODULES = ['produtos', 'estoque', 'manutencao', 'fornecedores', 'relatorios'];
+
+function blankPermissions() {
+  const p = {};
+  ACCESS_MODULES.forEach(m => { p[m] = { view: false, edit: false, delete: false }; });
+  return p;
+}
+function fullPermissions() {
+  const p = {};
+  ACCESS_MODULES.forEach(m => { p[m] = { view: true, edit: true, delete: true }; });
+  return p;
+}
+function isBootstrapAdmin(email) {
+  return !!email && BOOTSTRAP_ADMIN_EMAILS.map(e => e.toLowerCase()).includes(email.toLowerCase());
+}
+function isAdminUser() {
+  return (userProfile && userProfile.role === 'admin') || isBootstrapAdmin(firebaseUser && firebaseUser.email);
+}
+/**
+ * Permissão por módulo/ação. Admin tem tudo; usuário precisa estar 'approved'.
+ * action: 'view' | 'edit' | 'delete'
+ */
+function can(module, action = 'view') {
+  if (isAdminUser()) return true;
+  if (!userProfile || userProfile.status !== 'approved') return false;
+  const perms = userProfile.permissions || {};
+  return !!(perms[module] && perms[module][action]);
+}
 
 /**
- * Initialize Firebase Auth SDK
+ * Initialize Firebase Auth + Firestore
  */
 async function initFirebaseAuth() {
   if (window.firebase && window.firebase.auth) {
@@ -2398,20 +2471,74 @@ async function initFirebaseAuth() {
       window.firebase.initializeApp(FIREBASE_CONFIG);
     }
     firebaseAuth = window.firebase.auth();
-    firebaseAuth.onAuthStateChanged(user => {
-      firebaseUser = user;
-      updateLoginUI();
-      updateAuthGate();
-      if (user) {
-        console.log('✅ Firebase user:', user.email);
-        isAdmin = true;
-      } else {
-        isAdmin = false;
-      }
-    });
+    try { if (window.firebase.firestore) fsdb = window.firebase.firestore(); } catch (_) {}
+    firebaseAuth.onAuthStateChanged(handleAuthState);
     return true;
   }
   return false;
+}
+
+/**
+ * Reage à mudança de sessão: carrega/garante o perfil de acesso no Firestore.
+ */
+async function handleAuthState(user) {
+  firebaseUser = user;
+  if (!user) {
+    userProfile = null;
+    isAdmin = false;
+    updateLoginUI();
+    updateAuthGate();
+    return;
+  }
+  try {
+    userProfile = await loadOrCreateProfile(user);
+  } catch (err) {
+    console.error('Erro ao carregar perfil de acesso:', err);
+    userProfile = null;
+  }
+  isAdmin = isAdminUser();
+  updateLoginUI();
+  updateAuthGate();
+}
+
+/**
+ * Lê users/{uid} no Firestore. Cria perfil 'pendente' se não existir.
+ * Promove a admin automaticamente se o email estiver na lista de bootstrap.
+ */
+async function loadOrCreateProfile(user) {
+  if (!fsdb) {
+    // Sem Firestore disponível: só o admin-mestre entra
+    return isBootstrapAdmin(user.email)
+      ? { uid: user.uid, email: user.email, name: user.displayName || 'Admin', role: 'admin', status: 'approved', permissions: fullPermissions() }
+      : { uid: user.uid, email: user.email, name: user.displayName || '', role: 'employee', status: 'pending', permissions: blankPermissions() };
+  }
+
+  const ref = fsdb.collection('users').doc(user.uid);
+  const snap = await ref.get();
+
+  if (!snap.exists) {
+    const isAdm = isBootstrapAdmin(user.email);
+    const profile = {
+      uid: user.uid,
+      email: user.email || '',
+      name: user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'),
+      role: isAdm ? 'admin' : 'employee',
+      status: isAdm ? 'approved' : 'pending',
+      permissions: isAdm ? fullPermissions() : blankPermissions(),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    await ref.set(profile);
+    return profile;
+  }
+
+  const data = snap.data();
+  // Garante que o admin-mestre seja sempre admin/aprovado
+  if (isBootstrapAdmin(user.email) && (data.role !== 'admin' || data.status !== 'approved')) {
+    await ref.update({ role: 'admin', status: 'approved', permissions: fullPermissions(), updatedAt: Date.now() });
+    data.role = 'admin'; data.status = 'approved'; data.permissions = fullPermissions();
+  }
+  return data;
 }
 
 // O SDK do Firebase é carregado via CDN no <head>. Inicializa assim que disponível.
@@ -2442,16 +2569,48 @@ function updateAuthGate() {
   const gate = document.getElementById('auth-gate');
   if (!gate) return;
   authResolved = true;
-  const loading = document.getElementById('gate-loading');
-  const form = document.getElementById('gate-form');
-  if (firebaseUser) {
-    gate.style.display = 'none';
-  } else {
+  const views = {
+    loading: document.getElementById('gate-loading'),
+    login: document.getElementById('gate-login'),
+    register: document.getElementById('gate-register'),
+    status: document.getElementById('gate-status')
+  };
+  const show = (which) => {
     gate.style.display = 'flex';
-    if (loading) loading.style.display = 'none';
-    if (form) form.style.display = 'block';
+    Object.entries(views).forEach(([k, el]) => { if (el) el.style.display = (k === which ? 'block' : 'none'); });
+  };
+
+  // Não logado → formulário de login
+  if (!firebaseUser) {
+    show('login');
     setTimeout(() => document.getElementById('gate-email')?.focus(), 100);
+    return;
   }
+
+  // Logado e aprovado (ou admin) → libera o app
+  if (isAdminUser() || (userProfile && userProfile.status === 'approved')) {
+    gate.style.display = 'none';
+    if (typeof applyAccessUI === 'function') applyAccessUI();
+    return;
+  }
+
+  // Logado mas pendente/desativado → mensagem de status
+  const msgEl = document.getElementById('gate-status-msg');
+  if (userProfile && userProfile.status === 'disabled') {
+    if (msgEl) msgEl.innerHTML = '🚫 <b>Acesso desativado.</b><br>Fale com o administrador da empresa.';
+  } else {
+    if (msgEl) msgEl.innerHTML = '⏳ <b>Cadastro recebido!</b><br>Aguardando aprovação do administrador.';
+  }
+  show('status');
+}
+
+/** Alterna entre as telas de login e cadastro */
+function gateShow(which) {
+  ['login', 'register'].forEach(k => {
+    const el = document.getElementById('gate-' + k);
+    if (el) el.style.display = (k === which ? 'block' : 'none');
+  });
+  if (which === 'register') setTimeout(() => document.getElementById('reg-name')?.focus(), 100);
 }
 
 /**
@@ -2494,6 +2653,56 @@ async function handleGateLogin() {
       'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos'
     };
     errorEl.textContent = errorMap[err.code] || err.message || 'Erro ao entrar';
+    errorEl.style.display = 'block';
+  } finally {
+    btn.style.display = 'flex';
+    loadingBtn.style.display = 'none';
+  }
+}
+
+/**
+ * Cadastro pela tela de bloqueio — funcionário "pede acesso".
+ * Cria a conta no Firebase; o perfil nasce como 'pendente' até o admin aprovar.
+ */
+async function handleGateRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-pw').value;
+  const errorEl = document.getElementById('reg-error');
+  const btn = document.getElementById('reg-btn');
+  const loadingBtn = document.getElementById('reg-loading');
+
+  if (!name || !email || !password) {
+    errorEl.textContent = 'Preencha nome, email e senha';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (password.length < 6) {
+    errorEl.textContent = 'A senha deve ter ao menos 6 caracteres';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.style.display = 'none';
+  loadingBtn.style.display = 'block';
+  errorEl.style.display = 'none';
+
+  try {
+    if (!firebaseAuth) {
+      if (typeof firebase !== 'undefined' && firebase.auth) await initFirebaseAuth();
+      else throw new Error('Serviço indisponível. Recarregue a página.');
+    }
+    const cred = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+    try { await cred.user.updateProfile({ displayName: name }); } catch (_) {}
+    // handleAuthState cria o perfil 'pendente' e a tela mostra "aguardando aprovação"
+  } catch (err) {
+    const map = {
+      'auth/email-already-in-use': 'Este email já está cadastrado. Faça login.',
+      'auth/invalid-email': 'Email inválido',
+      'auth/weak-password': 'Senha muito fraca (mínimo 6 caracteres)',
+      'auth/operation-not-allowed': 'Cadastro por email/senha não habilitado no Firebase'
+    };
+    errorEl.textContent = map[err.code] || err.message || 'Erro ao cadastrar';
     errorEl.style.display = 'block';
   } finally {
     btn.style.display = 'flex';
