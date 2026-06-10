@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(npx --yes serve . -p 3007)",
+      "Bash(curl -s -o /dev/null -w \"index -> HTTP %{http_code}\\\\n\" http://localhost:3007/)",
+      "Bash(curl -s http://localhost:3007/)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node --check sw.js)"
+    ]
+  }
+}

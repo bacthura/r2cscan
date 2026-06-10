@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "@tanstack/react-query": "^5.100.14",
+    "express-rate-limit": "^8.5.2",
+    "firebase": "^12.13.0",
+    "firebase-admin": "^13.10.0",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^7.15.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "tailwindcss": "^4.3.0"
+  }
+}
