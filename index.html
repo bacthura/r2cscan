@@ -335,6 +335,29 @@
     overflow-y:auto; padding-bottom:30px;
   }
   #detail-page.open { transform:none; }
+  /* ── Detalhe da Ordem de Serviço ── */
+  #os-detail-page {
+    position:fixed; inset:0; z-index:200; background:var(--bg);
+    transform:translateX(100%); transition:transform .3s cubic-bezier(.4,0,.2,1);
+    display:flex; flex-direction:column;
+  }
+  #os-detail-page.open { transform:none; }
+  .os-detail-topbar { display:flex; align-items:center; gap:10px; padding:14px 14px 8px; }
+  .os-detail-tabs { padding:0 14px; flex-wrap:wrap; }
+  .os-detail-body { flex:1; overflow-y:auto; padding:12px 14px 40px; }
+  .os-field-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .os-field { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 10px; }
+  .os-field label { display:block; font-size:.6rem; color:var(--text2); text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+  .os-field span { font-size:.8rem; color:var(--text); font-family:var(--font-mono); }
+  .os-tl-item { display:flex; gap:10px; padding:8px 0; border-left:2px solid var(--accent); padding-left:12px; margin-left:6px; position:relative; }
+  .os-tl-item::before { content:''; position:absolute; left:-5px; top:12px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+  .os-gallery { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .os-gallery img, .os-gallery video { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; cursor:pointer; }
+  .os-compare { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .os-compare figure { margin:0; }
+  .os-compare img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; background:var(--bg3); }
+  .os-compare figcaption { font-size:.62rem; color:var(--text2); text-align:center; margin-top:4px; text-transform:uppercase; }
+  @media print { #bottomnav, .os-detail-topbar, .os-detail-tabs { display:none !important; } #os-detail-page { position:static; transform:none; } .os-dtab { display:block !important; } }
   .detail-hero { width:100%; height:240px; background:var(--bg3); position:relative; overflow:hidden; }
   .detail-hero img { width:100%; height:100%; object-fit:cover; }
   .detail-hero-overlay { position:absolute; inset:0; background:linear-gradient(to bottom, transparent 40%, var(--bg) 100%); }
@@ -701,6 +724,15 @@
     </button>
   </div>
 
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <button class="btn btn-primary" style="flex:1;padding:10px;font-size:.8rem;background:linear-gradient(135deg,var(--accent4),var(--accent2))" onclick="goPage('page-os')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>Ordens de Serviço
+    </button>
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.8rem" onclick="goPage('page-os-dash')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Dashboard OS
+    </button>
+  </div>
+
   <div class="tab-row" id="maint-tabs">
     <div class="tab active" data-mtab="all" onclick="setMaintTab(this,'all')">Todas</div>
     <div class="tab" data-mtab="pending" onclick="setMaintTab(this,'pending')">Pendentes</div>
@@ -837,6 +869,189 @@
 </div>
 
 <!-- BOTTOM NAV -->
+<!-- ═══════ ORDENS DE SERVIÇO (LISTA) ═══════ -->
+<div class="page" id="page-os">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="goPage('page-maint')">←</button>
+    <div class="section-label" style="margin:0;flex:1">Ordens de Serviço</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <button class="btn btn-primary" style="flex:1;padding:10px;font-size:.78rem" onclick="openOSModal()">+ Nova OS</button>
+    <button class="btn btn-secondary" style="padding:10px 12px;font-size:.78rem" onclick="exportOS('csv')">CSV</button>
+    <button class="btn btn-secondary" style="padding:10px 12px;font-size:.78rem" onclick="exportOS('pdf')">PDF</button>
+  </div>
+  <div class="search-wrap" style="margin-bottom:10px">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" placeholder="Buscar OS, equipamento, setor…" id="os-search" oninput="renderOS()">
+  </div>
+  <div class="tab-row" id="os-tabs" style="flex-wrap:wrap">
+    <div class="tab active" data-otab="all" onclick="setOSTab(this,'all')">Todas</div>
+    <div class="tab" data-otab="aberta" onclick="setOSTab(this,'aberta')">Abertas</div>
+    <div class="tab" data-otab="analise" onclick="setOSTab(this,'analise')">Análise</div>
+    <div class="tab" data-otab="aguardando_material" onclick="setOSTab(this,'aguardando_material')">Ag. Material</div>
+    <div class="tab" data-otab="execucao" onclick="setOSTab(this,'execucao')">Execução</div>
+    <div class="tab" data-otab="aguardando_aprovacao" onclick="setOSTab(this,'aguardando_aprovacao')">Ag. Aprovação</div>
+    <div class="tab" data-otab="concluida" onclick="setOSTab(this,'concluida')">Concluídas</div>
+    <div class="tab" data-otab="cancelada" onclick="setOSTab(this,'cancelada')">Canceladas</div>
+  </div>
+  <div id="os-list"></div>
+</div>
+
+<!-- ═══════ DASHBOARD DE MANUTENÇÃO ═══════ -->
+<div class="page" id="page-os-dash">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="goPage('page-maint')">←</button>
+    <div class="section-label" style="margin:0;flex:1">Dashboard de Manutenção</div>
+  </div>
+  <div class="stats-grid" id="os-kpis" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
+  <div class="section-label">Custos por Mês</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-costs" height="160"></canvas></div>
+  <div class="section-label">Falhas por Tipo</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-type" height="160"></canvas></div>
+  <div class="section-label">Falhas por Setor</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-sector" height="160"></canvas></div>
+  <div class="section-label">Custo por Equipamento</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-equip" height="160"></canvas></div>
+  <div class="section-label">Consumo de Materiais</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-mat" height="160"></canvas></div>
+</div>
+
+<!-- ═══════ LISTA DE COMPRAS ═══════ -->
+<div class="page" id="page-purchases">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="goPage('page-stock')">←</button>
+    <div class="section-label" style="margin:0;flex:1">Lista de Compras</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <button class="btn btn-primary" style="flex:1;padding:10px;font-size:.78rem" onclick="generatePurchaseList()">⟳ Gerar automático</button>
+    <button class="btn btn-secondary" style="padding:10px 12px;font-size:.78rem" onclick="exportPurchases('csv')">CSV</button>
+    <button class="btn btn-secondary" style="padding:10px 12px;font-size:.78rem" onclick="exportPurchases('pdf')">PDF</button>
+  </div>
+  <div id="purchase-list"></div>
+</div>
+
+<!-- ═══════ DETALHE DA OS (tela cheia) ═══════ -->
+<div id="os-detail-page">
+  <div class="os-detail-topbar">
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="closeOSDetail()">←</button>
+    <div id="os-detail-number" style="flex:1;font-family:var(--font-head);font-weight:700"></div>
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="printOS(currentOSId)" title="Imprimir/PDF">🖨️</button>
+  </div>
+  <div class="os-detail-tabs tab-row" id="os-detail-tabs">
+    <div class="tab active" data-dtab="info" onclick="setOSDetailTab(this,'info')">Info</div>
+    <div class="tab" data-dtab="timeline" onclick="setOSDetailTab(this,'timeline')">Andamento</div>
+    <div class="tab" data-dtab="photos" onclick="setOSDetailTab(this,'photos')">Fotos</div>
+    <div class="tab" data-dtab="materials" onclick="setOSDetailTab(this,'materials')">Materiais</div>
+    <div class="tab" data-dtab="costs" onclick="setOSDetailTab(this,'costs')">Custos</div>
+  </div>
+  <div class="os-detail-body">
+    <div id="os-dtab-info" class="os-dtab"></div>
+    <div id="os-dtab-timeline" class="os-dtab" style="display:none"></div>
+    <div id="os-dtab-photos" class="os-dtab" style="display:none"></div>
+    <div id="os-dtab-materials" class="os-dtab" style="display:none"></div>
+    <div id="os-dtab-costs" class="os-dtab" style="display:none"></div>
+  </div>
+</div>
+
+<!-- MODAL NOVA/EDITAR OS -->
+<div class="modal-overlay" id="modal-os">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-os-title">📋 Nova Ordem de Serviço</div>
+    <input type="hidden" id="os-edit-id">
+    <div class="form-row">
+      <div class="form-group"><label>Tipo</label>
+        <select id="os-type"><option value="corretiva">Corretiva</option><option value="preventiva">Preventiva</option><option value="preditiva">Preditiva</option><option value="inspecao">Inspeção</option></select>
+      </div>
+      <div class="form-group"><label>Prioridade</label>
+        <select id="os-priority"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option><option value="critica">Crítica</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Equipamento / Ativo</label>
+      <select id="os-asset"><option value="">— Selecionar ativo cadastrado —</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Patrimônio</label><input type="text" id="os-patrimony" placeholder="Nº patrimônio"></div>
+      <div class="form-group"><label>Setor</label><input type="text" id="os-sector" placeholder="Ex: Produção"></div>
+    </div>
+    <div class="form-group"><label>Localização</label><input type="text" id="os-location" placeholder="Ex: Galpão 2 - Linha A"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Solicitante</label><input type="text" id="os-requester" placeholder="Nome"></div>
+      <div class="form-group"><label>Responsável Técnico</label><input type="text" id="os-tech" placeholder="Nome"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Data Prevista</label><input type="date" id="os-due"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="os-status">
+          <option value="aberta">Aberta</option><option value="analise">Em análise</option>
+          <option value="aguardando_material">Aguardando material</option><option value="execucao">Em execução</option>
+          <option value="aguardando_aprovacao">Aguardando aprovação</option><option value="concluida">Concluída</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Descrição da Falha</label><textarea id="os-failure" placeholder="Descreva a falha relatada…"></textarea></div>
+    <div class="form-group"><label>Diagnóstico</label><textarea id="os-diagnosis" placeholder="Diagnóstico técnico…"></textarea></div>
+    <div class="form-group"><label>Causa Raiz</label><textarea id="os-rootcause" placeholder="Causa raiz identificada…"></textarea></div>
+    <div class="form-group"><label>Solução Aplicada</label><textarea id="os-solution" placeholder="Solução executada…"></textarea></div>
+    <div class="form-group"><label>Observações</label><textarea id="os-notes" placeholder="Observações gerais…"></textarea></div>
+    <div class="section-label" style="margin-top:2px">Custos (R$)</div>
+    <div class="form-row">
+      <div class="form-group"><label>Mão de obra</label><input type="number" step="0.01" id="os-labor" value="0"></div>
+      <div class="form-group"><label>Terceiros</label><input type="number" step="0.01" id="os-thirdparty" value="0"></div>
+    </div>
+    <div class="form-group"><label>Custos adicionais</label><input type="number" step="0.01" id="os-additional" value="0"></div>
+    <button class="btn btn-primary" onclick="saveOS()">Salvar Ordem de Serviço</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeOSModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL MATERIAL DA OS -->
+<div class="modal-overlay" id="modal-os-material">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🧰 Adicionar Material</div>
+    <input type="hidden" id="osmat-edit-id">
+    <div class="form-group"><label>Item do estoque (opcional — dá baixa automática)</label>
+      <select id="osmat-stock" onchange="onOSMatStockChange()"><option value="">— Material avulso —</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Código</label><input type="text" id="osmat-code"></div>
+      <div class="form-group"><label>Categoria</label><input type="text" id="osmat-cat"></div>
+    </div>
+    <div class="form-group"><label>Nome *</label><input type="text" id="osmat-name"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Quantidade</label><input type="number" step="0.001" id="osmat-qty" value="1"></div>
+      <div class="form-group"><label>Unidade</label><input type="text" id="osmat-unit" value="un"></div>
+    </div>
+    <div class="form-group"><label>Valor unitário (R$)</label><input type="number" step="0.01" id="osmat-price" value="0"></div>
+    <button class="btn btn-primary" onclick="saveOSMaterial()">Adicionar</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeOSMaterialModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL FOTO/ANEXO DA OS -->
+<div class="modal-overlay" id="modal-os-photo">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📷 Anexar Mídia</div>
+    <div class="form-group"><label>Fase / Tipo</label>
+      <select id="osphoto-phase">
+        <option value="antes">Foto — Antes</option><option value="durante">Foto — Durante</option>
+        <option value="depois">Foto — Depois</option><option value="video">Vídeo</option>
+        <option value="documento">PDF / Documento</option><option value="manual">Manual</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Arquivo</label>
+      <input type="file" id="osphoto-file" accept="image/*,video/*,application/pdf" onchange="onOSPhotoFile(this)">
+    </div>
+    <div id="osphoto-preview" style="margin-bottom:10px"></div>
+    <div class="form-group"><label>Legenda</label><input type="text" id="osphoto-caption" placeholder="Descrição (opcional)"></div>
+    <button class="btn btn-primary" onclick="saveOSPhoto()">Anexar</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeOSPhotoModal()">Cancelar</button>
+  </div>
+</div>
+
 <nav id="bottomnav">
   <div class="nav-item active" id="nav-home" onclick="goPage('page-home')">
     <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><path stroke="currentColor" d="M3 12L12 3l9 9"/><path stroke="currentColor" d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg><span>Início</span>
@@ -1040,18 +1255,29 @@
     <div class="modal-handle"></div>
     <div class="modal-title" id="modal-supplier-title">🏭 Novo Fornecedor</div>
     <input type="hidden" id="supp-edit-id">
-    <div class="form-group"><label>Nome da Empresa *</label><input type="text" id="sup-name" placeholder="Ex: Aços Ltda"></div>
+    <div class="form-group"><label>Razão Social *</label><input type="text" id="sup-name" placeholder="Ex: Aços Especiais Ltda"></div>
+    <div class="form-group"><label>Nome Fantasia</label><input type="text" id="sup-trade" placeholder="Ex: Aços Brasil"></div>
     <div class="form-row">
       <div class="form-group"><label>CNPJ</label><input type="text" id="sup-cnpj" placeholder="00.000.000/0001-00"></div>
       <div class="form-group"><label>Inscrição Estadual</label><input type="text" id="sup-ie" placeholder="IE"></div>
     </div>
-    <div class="form-group"><label>Contato</label><input type="text" id="sup-contact" placeholder="Nome do contato"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Contato</label><input type="text" id="sup-contact" placeholder="Nome do contato"></div>
+      <div class="form-group"><label>Responsável</label><input type="text" id="sup-resp" placeholder="Responsável"></div>
+    </div>
     <div class="form-row">
       <div class="form-group"><label>Telefone</label><input type="text" id="sup-phone" placeholder="(11) 99999-9999"></div>
-      <div class="form-group"><label>Email</label><input type="email" id="sup-email" placeholder="contato@empresa.com"></div>
+      <div class="form-group"><label>WhatsApp</label><input type="text" id="sup-whats" placeholder="(11) 99999-9999"></div>
     </div>
+    <div class="form-group"><label>Email</label><input type="email" id="sup-email" placeholder="contato@empresa.com"></div>
     <div class="form-group"><label>Endereço</label><textarea id="sup-addr" placeholder="Rua, número, bairro, cidade, estado, CEP"></textarea></div>
-    <div class="form-group"><label>Categoria de Produtos</label><input type="text" id="sup-cat" placeholder="Ex: Fixadores, Ferramentas, EPI"></div>
+    <div class="form-group"><label>Categoria</label>
+      <input type="text" id="sup-cat" list="sup-cat-list" placeholder="Elétrica, Mecânica, Hidráulica…">
+      <datalist id="sup-cat-list">
+        <option value="Elétrica"><option value="Mecânica"><option value="Hidráulica"><option value="Pneumática">
+        <option value="Instrumentação"><option value="Estrutural"><option value="Automação"><option value="Outros">
+      </datalist>
+    </div>
     <div class="form-group"><label>Observações</label><textarea id="sup-obs" placeholder="Observações sobre o fornecedor…"></textarea></div>
     <button class="btn btn-primary" onclick="saveSupplier()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Salvar Fornecedor
@@ -1222,19 +1448,21 @@ function analyzeImageLocally(imageBase64) {
 //  DATABASE (IndexedDB)
 // ═══════════════════════════════════════════
 let db;
-const DB_NAME = 'R2C-Scan', DB_VER = 3;
+const DB_NAME = 'R2C-Scan', DB_VER = 4;
 const STORE_PROD = 'products';
 const STORE_MAINT = 'maintenance';
 const STORE_STOCK = 'stock';
 const STORE_SUPPLIER = 'suppliers';
 const STORE_SCAN = 'scanHistory';
+const STORE_WORKORDER = 'workOrders';     // Ordens de Serviço (módulo manutenção industrial)
+const STORE_PURCHASE = 'purchaseRequests'; // Lista de compras
 
 function initDB() {
   return new Promise((res, rej) => {
     const req = indexedDB.open(DB_NAME, DB_VER);
     req.onupgradeneeded = e => {
       const d = e.target.result;
-      const stores = [STORE_PROD, STORE_MAINT, STORE_STOCK, STORE_SUPPLIER, STORE_SCAN];
+      const stores = [STORE_PROD, STORE_MAINT, STORE_STOCK, STORE_SUPPLIER, STORE_SCAN, STORE_WORKORDER, STORE_PURCHASE];
       stores.forEach(s => { if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' }); });
       // Add indexes to existing stores
       try {
@@ -1315,6 +1543,7 @@ function goPage(pageId) {
   const map = {
     'page-home':'nav-home','page-scanner':'nav-scanner','page-catalog':'nav-catalog',
     'page-maint':'nav-maint','page-maint-calendar':'nav-maint','page-stock':'nav-stock',
+    'page-os':'nav-maint','page-os-dash':'nav-maint','page-purchases':'nav-stock',
     'page-suppliers':'nav-suppliers','page-reports':'nav-reports','page-about':'nav-about',
     'page-admin':'nav-home'
   };
@@ -1327,6 +1556,9 @@ function goPage(pageId) {
   if (pageId === 'page-admin') renderAdmin();
   if (pageId === 'page-maint') renderMaint();
   if (pageId === 'page-maint-calendar') renderMaintCalendar();
+  if (pageId === 'page-os') renderOS();
+  if (pageId === 'page-os-dash') renderOSDashboard();
+  if (pageId === 'page-purchases') renderPurchases();
   if (pageId === 'page-stock') renderStock();
   if (pageId === 'page-suppliers') renderSuppliers();
   if (pageId === 'page-reports') renderReports();
@@ -2171,10 +2403,13 @@ function openSupplierModal(data) {
   document.getElementById('supp-edit-id').value = data?.id || '';
   document.getElementById('modal-supplier-title').textContent = data ? '✏️ Editar Fornecedor' : '🏭 Novo Fornecedor';
   document.getElementById('sup-name').value = data?.name || '';
+  document.getElementById('sup-trade').value = data?.tradeName || '';
   document.getElementById('sup-cnpj').value = data?.cnpj || '';
   document.getElementById('sup-ie').value = data?.ie || '';
   document.getElementById('sup-contact').value = data?.contact || '';
+  document.getElementById('sup-resp').value = data?.responsible || '';
   document.getElementById('sup-phone').value = data?.phone || '';
+  document.getElementById('sup-whats').value = data?.whatsapp || '';
   document.getElementById('sup-email').value = data?.email || '';
   document.getElementById('sup-addr').value = data?.address || '';
   document.getElementById('sup-cat').value = data?.category || '';
@@ -2911,6 +3146,558 @@ init();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
 }
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════
+     MÓDULO DE MANUTENÇÃO INDUSTRIAL — ORDENS DE SERVIÇO
+     Aditivo, offline-first (IndexedDB), integrado a estoque/fornecedores.
+     v2.1
+═════════════════════════════════════════════════════════════════════ -->
+<script>
+// ─── Estado do módulo OS ───
+let osTab = 'all';
+let currentOSId = null;
+let osDetailTab = 'info';
+let osPhotoStaged = null;       // { url, mime } da mídia em upload
+const osCharts = {};
+
+// ─── Rótulos ───
+const OS_STATUS = {
+  aberta:{t:'Aberta',c:'warn'}, analise:{t:'Em análise',c:'info'},
+  aguardando_material:{t:'Aguardando material',c:'warn'}, execucao:{t:'Em execução',c:'info'},
+  aguardando_aprovacao:{t:'Aguardando aprovação',c:'warn'}, concluida:{t:'Concluída',c:'ok'},
+  cancelada:{t:'Cancelada',c:'danger'}
+};
+const OS_PRIO = { baixa:{t:'Baixa',i:'🟢'}, media:{t:'Média',i:'🟡'}, alta:{t:'Alta',i:'🟠'}, critica:{t:'Crítica',i:'🔴'} };
+const OS_TYPE = { corretiva:'Corretiva', preventiva:'Preventiva', preditiva:'Preditiva', inspecao:'Inspeção' };
+
+// ─── Permissões (integra com o controle de acesso existente) ───
+// Papéis: ADMIN / SUPERVISOR / TÉCNICO / VISUALIZADOR.
+// Offline (sem perfil carregado) o app permanece utilizável.
+function osCan(action) {
+  // Sem sistema de auth ativo → modo local liberado (não quebra uso offline)
+  if (typeof userProfile === 'undefined' || userProfile === null) return true;
+  if (typeof isAdminUser === 'function' && isAdminUser()) return true;
+  const role = (userProfile.role || '').toLowerCase();
+  if (role === 'visualizador') return action === 'view';
+  if (role === 'tecnico') return ['view','edit','conclude'].includes(action);
+  if (role === 'supervisor') return action !== 'delete' || true; // supervisor: tudo menos exclusão definitiva é livre
+  // fallback para o modelo can(module,action) já existente
+  if (typeof can === 'function') {
+    if (action === 'view') return can('maintenance','view');
+    if (action === 'delete') return can('maintenance','delete');
+    return can('maintenance','edit');
+  }
+  return true;
+}
+
+// ─── Utilitários ───
+function money(v){ return 'R$ ' + (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function dt(ts){ return ts ? new Date(ts).toLocaleString('pt-BR') : '—'; }
+function dOnly(ts){ return ts ? new Date(ts).toLocaleDateString('pt-BR') : '—'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function osTotal(o){ return (Number(o.laborCost)||0)+(Number(o.thirdpartyCost)||0)+(Number(o.additionalCost)||0)+osMaterialsTotal(o); }
+function osMaterialsTotal(o){ return (o.materials||[]).reduce((s,m)=>s+(Number(m.qty)||0)*(Number(m.unitPrice)||0),0); }
+
+async function nextOSNumber(){
+  const all = await dbGetAll(STORE_WORKORDER);
+  const year = new Date().getFullYear();
+  const seq = all.filter(o => (o.osNumber||'').includes(`OS-${year}-`)).length + 1;
+  return `OS-${year}-${String(seq).padStart(4,'0')}`;
+}
+
+function osCurrentUser(){
+  try { if (typeof userProfile !== 'undefined' && userProfile && userProfile.email) return userProfile.email; } catch(_){}
+  try { if (typeof firebaseUser !== 'undefined' && firebaseUser && firebaseUser.email) return firebaseUser.email; } catch(_){}
+  return 'Local';
+}
+
+function addTimeline(o, event, note){
+  o.history = o.history || [];
+  o.history.push({ event, note: note||'', user: osCurrentUser(), ts: Date.now() });
+}
+
+// ═══════════════ LISTA DE OS ═══════════════
+function setOSTab(el, tab){
+  document.querySelectorAll('#os-tabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); osTab = tab; renderOS();
+}
+
+async function seedOSIfEmpty(){
+  const all = await dbGetAll(STORE_WORKORDER);
+  if (all.length) return;
+  const now = Date.now();
+  const demo = [
+    { id:`os_${now}`, osNumber:'OS-'+new Date().getFullYear()+'-0001', openedAt:now-86400000*2, dueAt:now+86400000, closedAt:null,
+      requester:'Operador Linha A', technician:'Carlos Silva', priority:'alta', type:'corretiva',
+      assetId:'demo1', equipment:'Prensa Hidráulica 50T', patrimony:'PAT-0091', sector:'Estamparia', location:'Galpão 2',
+      failureDesc:'Vazamento de óleo na unidade hidráulica', diagnosis:'Vedação do cilindro principal danificada',
+      rootCause:'Desgaste natural do retentor', solution:'', notes:'', status:'execucao',
+      laborCost:120, thirdpartyCost:0, additionalCost:0,
+      materials:[{id:'m1',code:'HID-001',name:'Kit de Vedação',category:'Hidráulica',qty:1,unit:'kit',unitPrice:85}],
+      photos:[], history:[{event:'Ordem criada',note:'OS aberta',user:'Local',ts:now-86400000*2},{event:'Técnico designado',note:'Carlos Silva',user:'Local',ts:now-86400000*2+900000}],
+      createdAt:now-86400000*2, updatedAt:now },
+    { id:`os_${now+1}`, osNumber:'OS-'+new Date().getFullYear()+'-0002', openedAt:now-86400000*6, dueAt:now-86400000, closedAt:now-86400000*4,
+      requester:'Supervisor', technician:'Maria Oliveira', priority:'media', type:'preventiva',
+      assetId:'', equipment:'Esteira Transportadora', patrimony:'PAT-0042', sector:'Expedição', location:'Doca 1',
+      failureDesc:'Manutenção preventiva programada', diagnosis:'Rolamentos com folga',
+      rootCause:'Ciclo preventivo', solution:'Substituição de rolamentos e lubrificação', notes:'Concluída no prazo', status:'concluida',
+      laborCost:90, thirdpartyCost:0, additionalCost:0,
+      materials:[{id:'m2',code:'MEC-204',name:'Rolamento 6204',category:'Mecânica',qty:2,unit:'un',unitPrice:32}],
+      photos:[], history:[{event:'Ordem criada',note:'',user:'Local',ts:now-86400000*6},{event:'Status: concluida',note:'',user:'Local',ts:now-86400000*4}],
+      createdAt:now-86400000*6, updatedAt:now-86400000*4 }
+  ];
+  for (const o of demo) await dbPut(STORE_WORKORDER, o);
+}
+
+async function renderOS(){
+  await seedOSIfEmpty();
+  let all = await dbGetAll(STORE_WORKORDER);
+  all.sort((a,b)=>b.openedAt-a.openedAt);
+  const q = (document.getElementById('os-search')?.value||'').toLowerCase();
+  if (osTab !== 'all') all = all.filter(o=>o.status===osTab);
+  if (q) all = all.filter(o => [o.osNumber,o.equipment,o.sector,o.technician,o.requester,o.failureDesc].some(f=>(f||'').toLowerCase().includes(q)));
+  const list = document.getElementById('os-list');
+  if (!all.length){ list.innerHTML = `<div class="empty-state"><p>Nenhuma ordem de serviço encontrada</p></div>`; return; }
+  const now = Date.now();
+  list.innerHTML = all.map(o=>{
+    const st = OS_STATUS[o.status]||OS_STATUS.aberta;
+    const pr = OS_PRIO[o.priority]||OS_PRIO.media;
+    const late = o.dueAt && o.status!=='concluida' && o.status!=='cancelada' && o.dueAt<now;
+    return `<div class="mini-card" onclick="openOSDetail('${o.id}')">
+      <div class="mc-icon" style="background:rgba(168,85,247,.12)">${pr.i}</div>
+      <div class="mc-body">
+        <div class="mc-title">${esc(o.osNumber)} — ${esc(o.equipment||'Sem equipamento')}</div>
+        <div class="mc-sub">${OS_TYPE[o.type]||o.type} · ${esc(o.sector||'—')} · ${dOnly(o.openedAt)}</div>
+        <div class="mc-sub">${money(osTotal(o))}${late?' · <span style="color:var(--danger)">ATRASADA</span>':''}</div>
+      </div>
+      <span class="status-badge ${st.c}">${st.t}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════ MODAL NOVA/EDITAR OS ═══════════════
+async function openOSModal(data){
+  if (!osCan('edit')){ toast('Sem permissão para editar OS'); return; }
+  data = data || null;
+  document.getElementById('os-edit-id').value = data?.id || '';
+  document.getElementById('modal-os-title').textContent = data ? '✏️ Editar OS' : '📋 Nova Ordem de Serviço';
+  // popular ativos a partir dos produtos cadastrados
+  const prods = await dbGetAll(STORE_PROD);
+  const sel = document.getElementById('os-asset');
+  sel.innerHTML = '<option value="">— Selecionar ativo cadastrado —</option>' +
+    prods.map(p=>`<option value="${p.id}" ${data?.assetId===p.id?'selected':''}>${esc(p.name)}${p.sku?' ('+esc(p.sku)+')':''}</option>`).join('');
+  const set=(id,v)=>document.getElementById(id).value=v;
+  set('os-type', data?.type||'corretiva'); set('os-priority', data?.priority||'media');
+  set('os-patrimony', data?.patrimony||''); set('os-sector', data?.sector||'');
+  set('os-location', data?.location||''); set('os-requester', data?.requester||'');
+  set('os-tech', data?.technician||''); set('os-status', data?.status||'aberta');
+  set('os-due', data?.dueAt ? new Date(data.dueAt).toISOString().split('T')[0] : '');
+  set('os-failure', data?.failureDesc||''); set('os-diagnosis', data?.diagnosis||'');
+  set('os-rootcause', data?.rootCause||''); set('os-solution', data?.solution||'');
+  set('os-notes', data?.notes||''); set('os-labor', data?.laborCost||0);
+  set('os-thirdparty', data?.thirdpartyCost||0); set('os-additional', data?.additionalCost||0);
+  document.getElementById('modal-os').classList.add('open');
+}
+function closeOSModal(){ document.getElementById('modal-os').classList.remove('open'); }
+
+async function saveOS(){
+  const editId = document.getElementById('os-edit-id').value;
+  const g=id=>document.getElementById(id).value;
+  const assetSel = document.getElementById('os-asset');
+  const equipment = assetSel.value ? assetSel.options[assetSel.selectedIndex].text.replace(/\s*\(.*\)$/,'') : '';
+  const dueStr = g('os-due');
+  let o;
+  if (editId){
+    o = await dbGetById(STORE_WORKORDER, editId);
+    if (!o){ toast('OS não encontrada'); return; }
+  } else {
+    o = { id:`os_${Date.now()}`, osNumber: await nextOSNumber(), openedAt:Date.now(), closedAt:null, history:[], photos:[], materials:[], createdAt:Date.now() };
+  }
+  const prevStatus = o.status;
+  Object.assign(o, {
+    assetId: assetSel.value, equipment: equipment || o.equipment || '',
+    type:g('os-type'), priority:g('os-priority'), patrimony:g('os-patrimony').trim(),
+    sector:g('os-sector').trim(), location:g('os-location').trim(),
+    requester:g('os-requester').trim(), technician:g('os-tech').trim(),
+    dueAt: dueStr ? new Date(dueStr+'T23:59').getTime() : null, status:g('os-status'),
+    failureDesc:g('os-failure').trim(), diagnosis:g('os-diagnosis').trim(),
+    rootCause:g('os-rootcause').trim(), solution:g('os-solution').trim(), notes:g('os-notes').trim(),
+    laborCost:parseFloat(g('os-labor'))||0, thirdpartyCost:parseFloat(g('os-thirdparty'))||0,
+    additionalCost:parseFloat(g('os-additional'))||0, updatedAt:Date.now()
+  });
+  if (!editId) addTimeline(o,'Ordem criada','OS '+o.osNumber+' aberta');
+  if (editId && prevStatus !== o.status){
+    if (o.status==='concluida'){ if(!osCan('conclude')){ toast('Sem permissão para concluir OS'); return; } o.closedAt=Date.now(); }
+    if (o.status==='aguardando_aprovacao' && !osCan('edit')){ toast('Sem permissão'); return; }
+    addTimeline(o,'Status: '+(OS_STATUS[o.status]?.t||o.status), '');
+  }
+  await dbPut(STORE_WORKORDER, o);
+  closeOSModal(); toast('OS salva!'); renderOS();
+  if (currentOSId===o.id) renderOSDetail();
+}
+
+// ═══════════════ DETALHE DA OS ═══════════════
+async function openOSDetail(id){
+  currentOSId = id; osDetailTab='info';
+  document.querySelectorAll('#os-detail-tabs .tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  await renderOSDetail();
+  document.getElementById('os-detail-page').classList.add('open');
+}
+function closeOSDetail(){ document.getElementById('os-detail-page').classList.remove('open'); currentOSId=null; renderOS(); }
+function setOSDetailTab(el,tab){
+  document.querySelectorAll('#os-detail-tabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); osDetailTab=tab;
+  ['info','timeline','photos','materials','costs'].forEach(t=>{
+    document.getElementById('os-dtab-'+t).style.display = t===tab?'block':'none';
+  });
+}
+
+async function renderOSDetail(){
+  const o = await dbGetById(STORE_WORKORDER, currentOSId);
+  if (!o) return;
+  const st = OS_STATUS[o.status]||OS_STATUS.aberta;
+  document.getElementById('os-detail-number').textContent = `${o.osNumber} · ${st.t}`;
+
+  // INFO
+  const f=(l,v)=>`<div class="os-field"><label>${l}</label><span>${esc(v||'—')}</span></div>`;
+  let assetHistHtml = '';
+  if (o.assetId){
+    const others = (await dbGetAll(STORE_WORKORDER)).filter(x=>x.assetId===o.assetId && x.id!==o.id);
+    const acc = others.reduce((s,x)=>s+osTotal(x),0);
+    assetHistHtml = `<div class="section-label" style="margin-top:10px">Histórico do Ativo</div>
+      <div class="os-field" style="margin-bottom:8px"><label>Manutenções anteriores</label><span>${others.length} · Custo acumulado ${money(acc)}</span></div>
+      ${others.slice(0,5).map(x=>`<div class="mini-card" onclick="openOSDetail('${x.id}')"><div class="mc-body"><div class="mc-title">${esc(x.osNumber)}</div><div class="mc-sub">${OS_TYPE[x.type]} · ${dOnly(x.openedAt)} · ${money(osTotal(x))}</div></div></div>`).join('')}`;
+  }
+  document.getElementById('os-dtab-info').innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn btn-secondary" style="flex:1;padding:9px;font-size:.74rem" onclick="editCurrentOS()">✏️ Editar</button>
+      <select onchange="changeOSStatus(this.value)" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px;color:var(--text);font-family:var(--font-mono);font-size:.72rem">
+        ${Object.entries(OS_STATUS).map(([k,v])=>`<option value="${k}" ${o.status===k?'selected':''}>${v.t}</option>`).join('')}
+      </select>
+      ${osCan('delete')?`<button class="btn btn-danger" style="padding:9px 12px;font-size:.74rem" onclick="deleteOS('${o.id}')">🗑️</button>`:''}
+    </div>
+    <div class="os-field-grid">
+      ${f('Tipo',OS_TYPE[o.type])}${f('Prioridade',(OS_PRIO[o.priority]||{}).t)}
+      ${f('Abertura',dt(o.openedAt))}${f('Prevista',dOnly(o.dueAt))}
+      ${f('Conclusão',dt(o.closedAt))}${f('Solicitante',o.requester)}
+      ${f('Resp. Técnico',o.technician)}${f('Setor',o.sector)}
+      ${f('Equipamento',o.equipment)}${f('Patrimônio',o.patrimony)}
+      ${f('Localização',o.location)}${f('Custo Total',money(osTotal(o)))}
+    </div>
+    ${['failureDesc:Descrição da Falha','diagnosis:Diagnóstico','rootCause:Causa Raiz','solution:Solução Aplicada','notes:Observações']
+      .map(p=>{const[k,l]=p.split(':');return o[k]?`<div class="os-field" style="margin-bottom:8px"><label>${l}</label><span style="white-space:pre-wrap">${esc(o[k])}</span></div>`:''}).join('')}
+    ${assetHistHtml}`;
+
+  // TIMELINE
+  const hist=(o.history||[]).slice().sort((a,b)=>a.ts-b.ts);
+  document.getElementById('os-dtab-timeline').innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="os-tl-note" placeholder="Registrar andamento…" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px;color:var(--text);font-family:var(--font-mono);font-size:.74rem">
+      <button class="btn btn-primary" style="padding:9px 14px" onclick="addOSTimelineNote()">+</button>
+    </div>
+    ${hist.length?hist.map(h=>`<div class="os-tl-item"><div><div style="font-size:.78rem;font-weight:600">${esc(h.event)}</div>
+      ${h.note?`<div style="font-size:.72rem;color:var(--text2)">${esc(h.note)}</div>`:''}
+      <div style="font-size:.62rem;color:var(--text2)">${dt(h.ts)} · ${esc(h.user)}</div></div></div>`).join(''):'<div class="empty-state"><p>Sem eventos</p></div>'}`;
+
+  // PHOTOS
+  const ph=o.photos||[];
+  const byPhase=p=>ph.filter(x=>x.phase===p);
+  const galHtml=arr=>arr.length?`<div class="os-gallery">${arr.map(p=>osMediaThumb(p)).join('')}</div>`:'<div style="font-size:.7rem;color:var(--text2);margin-bottom:8px">Nenhum item</div>';
+  const before=byPhase('antes'), after=byPhase('depois');
+  document.getElementById('os-dtab-photos').innerHTML = `
+    <button class="btn btn-primary" style="margin-bottom:12px;padding:9px;font-size:.76rem" onclick="openOSPhotoModal()">📷 Anexar Mídia</button>
+    ${(before.length||after.length)?`<div class="section-label">Comparação Antes × Depois</div>
+      <div class="os-compare"><figure><img src="${before[0]?before[0].url:''}" onerror="this.style.opacity=.2"><figcaption>Antes</figcaption></figure>
+      <figure><img src="${after[0]?after[0].url:''}" onerror="this.style.opacity=.2"><figcaption>Depois</figcaption></figure></div>`:''}
+    <div class="section-label">Antes</div>${galHtml(before)}
+    <div class="section-label">Durante</div>${galHtml(byPhase('durante'))}
+    <div class="section-label">Depois</div>${galHtml(after)}
+    <div class="section-label">Vídeos / Documentos / Manuais</div>${galHtml([...byPhase('video'),...byPhase('documento'),...byPhase('manual')])}`;
+
+  // MATERIALS
+  const mats=o.materials||[];
+  document.getElementById('os-dtab-materials').innerHTML = `
+    <button class="btn btn-primary" style="margin-bottom:12px;padding:9px;font-size:.76rem" onclick="openOSMaterialModal()">+ Adicionar Material</button>
+    ${mats.length?mats.map(m=>`<div class="mini-card">
+      <div class="mc-icon" style="background:rgba(0,200,255,.1)">🧰</div>
+      <div class="mc-body"><div class="mc-title">${esc(m.name)} <span style="color:var(--text2);font-weight:400">×${m.qty} ${esc(m.unit||'')}</span></div>
+      <div class="mc-sub">${esc(m.code||'')}${m.category?' · '+esc(m.category):''} · ${money((Number(m.qty)||0)*(Number(m.unitPrice)||0))}</div></div>
+      <button class="btn btn-danger" style="padding:4px 8px;font-size:.62rem" onclick="removeOSMaterial('${m.id}')">×</button>
+    </div>`).join(''):'<div class="empty-state"><p>Nenhum material lançado</p></div>'}
+    <div class="os-field" style="margin-top:8px"><label>Total de materiais</label><span>${money(osMaterialsTotal(o))}</span></div>`;
+
+  // COSTS
+  document.getElementById('os-dtab-costs').innerHTML = `
+    <div class="os-field-grid">
+      ${f('Mão de obra',money(o.laborCost))}${f('Materiais',money(osMaterialsTotal(o)))}
+      ${f('Terceiros',money(o.thirdpartyCost))}${f('Adicionais',money(o.additionalCost))}
+    </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,rgba(168,85,247,.15),rgba(0,200,255,.12));border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+      <div style="font-size:.7rem;color:var(--text2);text-transform:uppercase">Custo Total da OS</div>
+      <div style="font-family:var(--font-head);font-weight:800;font-size:1.8rem;color:var(--accent)">${money(osTotal(o))}</div>
+    </div>`;
+}
+
+function osMediaThumb(p){
+  if ((p.mime||'').startsWith('video')) return `<video src="${p.url}" muted onclick="window.open('${p.url}','_blank')"></video>`;
+  if ((p.mime||'').includes('pdf')) return `<div onclick="window.open('${p.url}','_blank')" style="aspect-ratio:1;background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;cursor:pointer">📄</div>`;
+  return `<img src="${p.url}" onclick="window.open('${p.url}','_blank')">`;
+}
+
+async function editCurrentOS(){ const o=await dbGetById(STORE_WORKORDER,currentOSId); openOSModal(o); }
+
+async function changeOSStatus(status){
+  const o=await dbGetById(STORE_WORKORDER,currentOSId); if(!o) return;
+  if (status==='concluida' && !osCan('conclude')){ toast('Sem permissão para concluir'); renderOSDetail(); return; }
+  if (o.status===status) return;
+  o.status=status; if(status==='concluida') o.closedAt=Date.now(); o.updatedAt=Date.now();
+  addTimeline(o,'Status: '+(OS_STATUS[status]?.t||status),'');
+  await dbPut(STORE_WORKORDER,o); toast('Status atualizado'); renderOSDetail();
+}
+
+async function addOSTimelineNote(){
+  const inp=document.getElementById('os-tl-note'); const note=inp.value.trim(); if(!note) return;
+  const o=await dbGetById(STORE_WORKORDER,currentOSId); addTimeline(o,'Andamento',note); o.updatedAt=Date.now();
+  await dbPut(STORE_WORKORDER,o); renderOSDetail();
+}
+
+async function deleteOS(id){
+  if (!osCan('delete')){ toast('Sem permissão para excluir'); return; }
+  if (!confirm('Excluir esta ordem de serviço?')) return;
+  await dbDelete(STORE_WORKORDER,id); closeOSDetail(); toast('OS excluída'); renderOS();
+}
+
+// ═══════════════ MATERIAIS (integração estoque) ═══════════════
+async function openOSMaterialModal(){
+  const items = await dbGetAll(STORE_STOCK);
+  document.getElementById('osmat-stock').innerHTML = '<option value="">— Material avulso —</option>' +
+    items.map(i=>`<option value="${i.id}" data-name="${esc(i.name)}" data-unit="${esc(i.unit||'un')}">${esc(i.name)} (${i.qty} ${esc(i.unit||'')})</option>`).join('');
+  ['osmat-code','osmat-cat','osmat-name'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('osmat-qty').value=1; document.getElementById('osmat-unit').value='un'; document.getElementById('osmat-price').value=0;
+  document.getElementById('modal-os-material').classList.add('open');
+}
+function closeOSMaterialModal(){ document.getElementById('modal-os-material').classList.remove('open'); }
+function onOSMatStockChange(){
+  const sel=document.getElementById('osmat-stock'); const opt=sel.options[sel.selectedIndex];
+  if (sel.value){ document.getElementById('osmat-name').value=opt.dataset.name||''; document.getElementById('osmat-unit').value=opt.dataset.unit||'un'; }
+}
+async function saveOSMaterial(){
+  const name=document.getElementById('osmat-name').value.trim();
+  if(!name){ toast('Nome obrigatório'); return; }
+  const qty=parseFloat(document.getElementById('osmat-qty').value)||0;
+  const stockId=document.getElementById('osmat-stock').value;
+  const o=await dbGetById(STORE_WORKORDER,currentOSId);
+  const mat={ id:`mat_${Date.now()}`, stockId, code:document.getElementById('osmat-code').value.trim(),
+    category:document.getElementById('osmat-cat').value.trim(), name,
+    qty, unit:document.getElementById('osmat-unit').value.trim()||'un',
+    unitPrice:parseFloat(document.getElementById('osmat-price').value)||0 };
+  // Baixa de estoque
+  if (stockId){
+    const item=await dbGetById(STORE_STOCK,stockId);
+    if (item){
+      if ((item.qty||0) < qty){ toast('Estoque insuficiente ('+item.qty+' disp.)'); return; }
+      item.qty=(item.qty||0)-qty; item.updatedAt=Date.now(); await dbPut(STORE_STOCK,item);
+      const mov={ id:`mov_${Date.now()}`, itemId:stockId, itemName:item.name, type:'saida', qty, reason:`Consumo OS ${o.osNumber}`, responsavel:o.technician||'', timestamp:Date.now() };
+      const movs=JSON.parse(localStorage.getItem('r2c_movements')||'[]'); movs.unshift(mov);
+      localStorage.setItem('r2c_movements',JSON.stringify(movs.slice(0,500)));
+    }
+  }
+  o.materials=o.materials||[]; o.materials.push(mat);
+  addTimeline(o,'Material adicionado',`${name} ×${qty}`); o.updatedAt=Date.now();
+  await dbPut(STORE_WORKORDER,o);
+  closeOSMaterialModal(); toast('Material adicionado'); renderOSDetail();
+}
+async function removeOSMaterial(matId){
+  const o=await dbGetById(STORE_WORKORDER,currentOSId);
+  const mat=(o.materials||[]).find(m=>m.id===matId); if(!mat) return;
+  // devolve ao estoque
+  if (mat.stockId){
+    const item=await dbGetById(STORE_STOCK,mat.stockId);
+    if (item){ item.qty=(item.qty||0)+(Number(mat.qty)||0); item.updatedAt=Date.now(); await dbPut(STORE_STOCK,item); }
+  }
+  o.materials=o.materials.filter(m=>m.id!==matId); o.updatedAt=Date.now();
+  await dbPut(STORE_WORKORDER,o); toast('Material removido'); renderOSDetail();
+}
+
+// ═══════════════ FOTOS / ANEXOS ═══════════════
+function openOSPhotoModal(){
+  osPhotoStaged=null; document.getElementById('osphoto-file').value='';
+  document.getElementById('osphoto-caption').value=''; document.getElementById('osphoto-preview').innerHTML='';
+  document.getElementById('modal-os-photo').classList.add('open');
+}
+function closeOSPhotoModal(){ document.getElementById('modal-os-photo').classList.remove('open'); }
+function onOSPhotoFile(input){
+  const file=input.files[0]; if(!file) return;
+  if (file.size > 8*1024*1024){ toast('Arquivo muito grande (máx 8MB)'); input.value=''; return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    osPhotoStaged={ url:e.target.result, mime:file.type };
+    const pv=document.getElementById('osphoto-preview');
+    if (file.type.startsWith('image')) pv.innerHTML=`<img src="${e.target.result}" style="width:100%;max-height:160px;object-fit:contain;border-radius:8px">`;
+    else if (file.type.startsWith('video')) pv.innerHTML=`<video src="${e.target.result}" controls style="width:100%;max-height:160px;border-radius:8px"></video>`;
+    else pv.innerHTML=`<div style="padding:14px;background:var(--bg3);border-radius:8px;font-size:.74rem">📄 ${esc(file.name)}</div>`;
+  };
+  reader.readAsDataURL(file);
+}
+async function saveOSPhoto(){
+  if(!osPhotoStaged){ toast('Selecione um arquivo'); return; }
+  const o=await dbGetById(STORE_WORKORDER,currentOSId);
+  o.photos=o.photos||[];
+  o.photos.push({ id:`ph_${Date.now()}`, phase:document.getElementById('osphoto-phase').value,
+    url:osPhotoStaged.url, mime:osPhotoStaged.mime, caption:document.getElementById('osphoto-caption').value.trim(), ts:Date.now() });
+  addTimeline(o,'Mídia anexada',document.getElementById('osphoto-phase').value); o.updatedAt=Date.now();
+  await dbPut(STORE_WORKORDER,o); closeOSPhotoModal(); toast('Mídia anexada'); renderOSDetail();
+}
+
+// ═══════════════ DASHBOARD / KPIs ═══════════════
+async function computeKPIs(){
+  const all=await dbGetAll(STORE_WORKORDER); const now=Date.now();
+  const open=all.filter(o=>o.status!=='concluida'&&o.status!=='cancelada');
+  const done=all.filter(o=>o.status==='concluida');
+  const late=open.filter(o=>o.dueAt&&o.dueAt<now);
+  // MTTR em horas
+  const reparos=done.filter(o=>o.closedAt&&o.openedAt).map(o=>(o.closedAt-o.openedAt)/3600000);
+  const mttr=reparos.length?reparos.reduce((a,b)=>a+b,0)/reparos.length:0;
+  // MTBF: tempo médio entre falhas corretivas por equipamento
+  const corr={};
+  all.filter(o=>o.type==='corretiva').forEach(o=>{(corr[o.equipment||o.assetId||'geral']??=[]).push(o.openedAt);});
+  let gaps=[];
+  Object.values(corr).forEach(times=>{times.sort((a,b)=>a-b);for(let i=1;i<times.length;i++)gaps.push((times[i]-times[i-1])/3600000);});
+  const mtbf=gaps.length?gaps.reduce((a,b)=>a+b,0)/gaps.length:0;
+  const disp=(mtbf+mttr)>0?(mtbf/(mtbf+mttr))*100:100;
+  return { total:all.length, open:open.length, done:done.length, late:late.length, mttr, mtbf, disp, all };
+}
+
+async function renderOSDashboard(){
+  const k=await computeKPIs();
+  const card=(v,l,c)=>`<div class="stat-card"><div class="stat-val ${c||''}">${v}</div><div class="stat-label">${l}</div></div>`;
+  document.getElementById('os-kpis').innerHTML =
+    card(k.open,'OS Abertas','warn')+card(k.done,'Concluídas','')+card(k.late,'Atrasadas','danger')+
+    card(k.mttr.toFixed(1)+'h','MTTR','info')+card(k.mtbf.toFixed(0)+'h','MTBF','purple')+card(k.disp.toFixed(0)+'%','Disponib.','');
+  if (typeof Chart==='undefined') return;
+  const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+  const palette=[css('--accent'),css('--accent2'),css('--accent3'),css('--accent4'),css('--accent5'),'#FF4466'];
+  const mk=(id,type,labels,data,label)=>{
+    const ctx=document.getElementById(id); if(!ctx) return;
+    if(osCharts[id]) osCharts[id].destroy();
+    osCharts[id]=new Chart(ctx,{type,data:{labels,datasets:[{label,data,backgroundColor:type==='line'?'transparent':palette,borderColor:palette[1],borderWidth:2,fill:false,tension:.3}]},
+      options:{responsive:true,plugins:{legend:{display:type==='doughnut',labels:{color:css('--text2'),font:{size:10}}}},scales:type==='doughnut'?{}:{x:{ticks:{color:css('--text2'),font:{size:9}}},y:{ticks:{color:css('--text2'),font:{size:9}}}}}});
+  };
+  // Custos por mês
+  const months={}; k.all.forEach(o=>{const d=new Date(o.openedAt);const key=`${d.getMonth()+1}/${String(d.getFullYear()).slice(2)}`;months[key]=(months[key]||0)+osTotal(o);});
+  mk('os-chart-costs','line',Object.keys(months),Object.values(months),'Custo (R$)');
+  // Falhas por tipo
+  const types={}; k.all.forEach(o=>types[OS_TYPE[o.type]||o.type]=(types[OS_TYPE[o.type]||o.type]||0)+1);
+  mk('os-chart-type','doughnut',Object.keys(types),Object.values(types),'OS');
+  // Falhas por setor
+  const sectors={}; k.all.forEach(o=>{const s=o.sector||'Sem setor';sectors[s]=(sectors[s]||0)+1;});
+  mk('os-chart-sector','bar',Object.keys(sectors),Object.values(sectors),'OS');
+  // Custo por equipamento
+  const equips={}; k.all.forEach(o=>{const e=o.equipment||'Sem equip.';equips[e]=(equips[e]||0)+osTotal(o);});
+  mk('os-chart-equip','bar',Object.keys(equips),Object.values(equips),'Custo (R$)');
+  // Consumo de materiais
+  const matc={}; k.all.forEach(o=>(o.materials||[]).forEach(m=>matc[m.name]=(matc[m.name]||0)+(Number(m.qty)||0)));
+  mk('os-chart-mat','bar',Object.keys(matc),Object.values(matc),'Qtd');
+}
+
+// ═══════════════ LISTA DE COMPRAS ═══════════════
+async function generatePurchaseList(){
+  const stock=await dbGetAll(STORE_STOCK);
+  const suppliers=await dbGetAll(STORE_SUPPLIER);
+  const existing=await dbGetAll(STORE_PURCHASE);
+  const low=stock.filter(i=>(i.qty||0)<=(i.min||0));
+  let added=0;
+  for (const i of low){
+    if (existing.some(p=>p.stockId===i.id && p.status==='pendente')) continue;
+    // fornecedor sugerido: por correspondência de categoria/nome
+    const sup=suppliers.find(s=>(s.category||'').toLowerCase().split(/[,;]/).some(c=>c.trim() && (i.name||'').toLowerCase().includes(c.trim()))) || suppliers[0];
+    const need=Math.max((i.min||0)*2-(i.qty||0),1);
+    await dbPut(STORE_PURCHASE,{ id:`pur_${Date.now()}_${added}`, stockId:i.id, material:i.name, quantity:need, unit:i.unit||'un',
+      supplierId:sup?.id||'', supplierName:sup?.name||'', lastPrice:i.lastPrice||0, status:'pendente', createdAt:Date.now() });
+    added++;
+  }
+  toast(added?`${added} item(ns) adicionado(s)`:'Estoque OK — nada a comprar');
+  renderPurchases();
+}
+
+async function renderPurchases(){
+  const list=await dbGetAll(STORE_PURCHASE);
+  list.sort((a,b)=>b.createdAt-a.createdAt);
+  const el=document.getElementById('purchase-list');
+  if (!list.length){ el.innerHTML='<div class="empty-state"><p>Lista vazia. Toque em "Gerar automático" para identificar itens abaixo do mínimo.</p></div>'; return; }
+  const stMap={pendente:'warn',cotado:'info',comprado:'ok',recebido:'ok',cancelado:'danger'};
+  el.innerHTML=list.map(p=>`<div class="mini-card">
+    <div class="mc-icon" style="background:rgba(245,158,11,.12)">🛒</div>
+    <div class="mc-body"><div class="mc-title">${esc(p.material)} <span style="color:var(--text2);font-weight:400">×${p.quantity} ${esc(p.unit||'')}</span></div>
+    <div class="mc-sub">${esc(p.supplierName||'Sem fornecedor')}${p.lastPrice?' · últ. '+money(p.lastPrice):''}</div></div>
+    <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+      <span class="status-badge ${stMap[p.status]||'warn'}">${p.status}</span>
+      <div style="display:flex;gap:4px">
+        <button onclick="cyclePurchase('${p.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:.6rem;cursor:pointer;color:var(--accent2)">→</button>
+        <button onclick="dbDelete('${STORE_PURCHASE}','${p.id}').then(renderPurchases)" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:.6rem;cursor:pointer;color:var(--danger)">×</button>
+      </div>
+    </div>
+  </div>`).join('');
+}
+async function cyclePurchase(id){
+  const seq=['pendente','cotado','comprado','recebido'];
+  const p=await dbGetById(STORE_PURCHASE,id); if(!p) return;
+  p.status=seq[(seq.indexOf(p.status)+1)%seq.length]; p.updatedAt=Date.now();
+  await dbPut(STORE_PURCHASE,p); renderPurchases();
+}
+
+// ═══════════════ EXPORTAÇÃO (CSV / PDF) ═══════════════
+function downloadCSV(filename, rows){
+  const csv='﻿'+rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function printHTML(title, bodyHtml){
+  const w=window.open('','_blank');
+  w.document.write(`<html><head><title>${title}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111}h1{font-size:18px}table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#eee}</style></head><body><h1>${title}</h1>${bodyHtml}<script>onload=()=>{print()}<\/script></body></html>`);
+  w.document.close();
+}
+
+async function exportOS(fmt){
+  const all=(await dbGetAll(STORE_WORKORDER)).sort((a,b)=>b.openedAt-a.openedAt);
+  const header=['OS','Tipo','Prioridade','Status','Equipamento','Setor','Solicitante','Técnico','Abertura','Prevista','Conclusão','Custo Total'];
+  const rows=all.map(o=>[o.osNumber,OS_TYPE[o.type]||o.type,(OS_PRIO[o.priority]||{}).t,(OS_STATUS[o.status]||{}).t,o.equipment,o.sector,o.requester,o.technician,dt(o.openedAt),dOnly(o.dueAt),dt(o.closedAt),osTotal(o).toFixed(2)]);
+  if (fmt==='csv'){ downloadCSV('ordens-servico.csv',[header,...rows]); return; }
+  const body=`<table><thead><tr>${header.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  printHTML('Relatório de Ordens de Serviço',body);
+}
+
+async function exportPurchases(fmt){
+  const list=await dbGetAll(STORE_PURCHASE);
+  const header=['Material','Quantidade','Unidade','Fornecedor','Último Preço','Status'];
+  const rows=list.map(p=>[p.material,p.quantity,p.unit,p.supplierName,p.lastPrice||0,p.status]);
+  if (fmt==='csv'){ downloadCSV('lista-compras.csv',[header,...rows]); return; }
+  const body=`<table><thead><tr>${header.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  printHTML('Lista de Compras',body);
+}
+
+async function printOS(id){
+  const o=await dbGetById(STORE_WORKORDER,id||currentOSId); if(!o) return;
+  const row=(l,v)=>`<tr><th style="width:30%">${l}</th><td>${esc(v||'—')}</td></tr>`;
+  const mats=(o.materials||[]).map(m=>`<tr><td>${esc(m.name)}</td><td>${m.qty} ${esc(m.unit||'')}</td><td>${money(m.unitPrice)}</td><td>${money((m.qty||0)*(m.unitPrice||0))}</td></tr>`).join('');
+  const tl=(o.history||[]).map(h=>`<tr><td>${dt(h.ts)}</td><td>${esc(h.event)}</td><td>${esc(h.note||'')}</td><td>${esc(h.user)}</td></tr>`).join('');
+  printHTML('Ordem de Serviço '+o.osNumber, `
+    <table>${row('OS',o.osNumber)}${row('Tipo',OS_TYPE[o.type])}${row('Prioridade',(OS_PRIO[o.priority]||{}).t)}${row('Status',(OS_STATUS[o.status]||{}).t)}
+    ${row('Equipamento',o.equipment)}${row('Patrimônio',o.patrimony)}${row('Setor',o.sector)}${row('Localização',o.location)}
+    ${row('Solicitante',o.requester)}${row('Técnico',o.technician)}${row('Abertura',dt(o.openedAt))}${row('Prevista',dOnly(o.dueAt))}${row('Conclusão',dt(o.closedAt))}
+    ${row('Descrição da Falha',o.failureDesc)}${row('Diagnóstico',o.diagnosis)}${row('Causa Raiz',o.rootCause)}${row('Solução',o.solution)}${row('Observações',o.notes)}</table>
+    <h1 style="font-size:14px;margin-top:16px">Materiais</h1><table><tr><th>Material</th><th>Qtd</th><th>Unit.</th><th>Total</th></tr>${mats||'<tr><td colspan=4>—</td></tr>'}</table>
+    <h1 style="font-size:14px;margin-top:16px">Custos</h1><table>${row('Mão de obra',money(o.laborCost))}${row('Materiais',money(osMaterialsTotal(o)))}${row('Terceiros',money(o.thirdpartyCost))}${row('Adicionais',money(o.additionalCost))}${row('TOTAL',money(osTotal(o)))}</table>
+    <h1 style="font-size:14px;margin-top:16px">Andamento</h1><table><tr><th>Data</th><th>Evento</th><th>Obs.</th><th>Usuário</th></tr>${tl||'<tr><td colspan=4>—</td></tr>'}</table>`);
+}
+
+// ─── Fechar modais ao clicar no overlay ───
+['modal-os','modal-os-material','modal-os-photo'].forEach(id=>{
+  const el=document.getElementById(id);
+  if (el) el.addEventListener('click', e=>{ if(e.target===e.currentTarget) el.classList.remove('open'); });
+});
 </script>
 </body>
 </html>

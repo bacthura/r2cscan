@@ -16,7 +16,15 @@ export const TABLES = {
   suppliers: 'suppliers',
   scans: 'scan_history',
   users: 'users',
-  movements: 'stock_movements'
+  movements: 'stock_movements',
+  // ── Módulo de Manutenção Industrial (Ordens de Serviço) ──
+  workOrders: 'maintenance_orders',
+  woPhotos: 'maintenance_photos',
+  woHistory: 'maintenance_history',
+  woMaterials: 'maintenance_materials',
+  woCosts: 'maintenance_costs',
+  reports: 'maintenance_reports',
+  purchases: 'purchase_requests'
 };
 
 /**
@@ -280,6 +288,144 @@ export const scans = {
     return query(supabase =>
       supabase.from(TABLES.scans).select('*').order('timestamp', { ascending: false }).limit(limit)
     );
+  }
+};
+
+// ═══════════════════════════════════════════
+//  WORK ORDERS (Ordens de Serviço)
+// ═══════════════════════════════════════════
+function nextOsNumber(existing) {
+  const year = new Date().getFullYear();
+  const seq = (existing || []).filter(n => (n || '').includes(`OS-${year}-`)).length + 1;
+  return `OS-${year}-${String(seq).padStart(4, '0')}`;
+}
+
+export const workOrders = {
+  async getAll(filters = {}) {
+    return query(supabase => {
+      let q = supabase.from(TABLES.workOrders).select('*').order('opened_at', { ascending: false });
+      if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status);
+      if (filters.priority) q = q.eq('priority', filters.priority);
+      if (filters.type) q = q.eq('type', filters.type);
+      return q;
+    });
+  },
+
+  async getById(id) {
+    const order = await query(supabase => supabase.from(TABLES.workOrders).select('*').eq('id', id).single());
+    const [photos, history, materials, costs] = await Promise.all([
+      query(s => s.from(TABLES.woPhotos).select('*').eq('order_id', id).order('created_at')),
+      query(s => s.from(TABLES.woHistory).select('*').eq('order_id', id).order('created_at')),
+      query(s => s.from(TABLES.woMaterials).select('*').eq('order_id', id).order('created_at')),
+      query(s => s.from(TABLES.woCosts).select('*').eq('order_id', id).order('created_at'))
+    ]);
+    return { ...order, photos, history, materials, costs };
+  },
+
+  async create(data) {
+    const all = await query(s => s.from(TABLES.workOrders).select('os_number'));
+    const osNumber = data.osNumber || nextOsNumber((all || []).map(r => r.os_number));
+    return query(supabase => supabase.from(TABLES.workOrders).insert({
+      os_number: osNumber,
+      opened_at: new Date(data.openedAt || Date.now()).toISOString(),
+      due_at: data.dueAt ? new Date(data.dueAt).toISOString() : null,
+      closed_at: data.closedAt ? new Date(data.closedAt).toISOString() : null,
+      requester: data.requester,
+      technician: data.technician,
+      priority: data.priority || 'media',
+      type: data.type || 'corretiva',
+      equipment: data.equipment,
+      asset_id: data.assetId,
+      patrimony: data.patrimony,
+      sector: data.sector,
+      location: data.location,
+      failure_desc: data.failureDesc,
+      diagnosis: data.diagnosis,
+      root_cause: data.rootCause,
+      solution: data.solution,
+      notes: data.notes,
+      status: data.status || 'aberta',
+      labor_cost: data.laborCost || 0,
+      thirdparty_cost: data.thirdpartyCost || 0,
+      additional_cost: data.additionalCost || 0,
+      created_by: data.createdBy
+    }).select().single());
+  },
+
+  async update(id, data) {
+    const patch = { updated_at: new Date().toISOString() };
+    const map = {
+      requester: 'requester', technician: 'technician', priority: 'priority', type: 'type',
+      equipment: 'equipment', assetId: 'asset_id', patrimony: 'patrimony', sector: 'sector',
+      location: 'location', failureDesc: 'failure_desc', diagnosis: 'diagnosis',
+      rootCause: 'root_cause', solution: 'solution', notes: 'notes', status: 'status',
+      laborCost: 'labor_cost', thirdpartyCost: 'thirdparty_cost', additionalCost: 'additional_cost'
+    };
+    for (const [k, col] of Object.entries(map)) if (data[k] !== undefined) patch[col] = data[k];
+    if (data.dueAt !== undefined) patch.due_at = data.dueAt ? new Date(data.dueAt).toISOString() : null;
+    if (data.status === 'concluida') patch.closed_at = new Date().toISOString();
+    return query(supabase => supabase.from(TABLES.workOrders).update(patch).eq('id', id).select().single());
+  },
+
+  async delete(id) {
+    return query(supabase => supabase.from(TABLES.workOrders).delete().eq('id', id));
+  },
+
+  // ── timeline ──
+  async addHistory(orderId, ev) {
+    return query(s => s.from(TABLES.woHistory).insert({
+      order_id: orderId, event: ev.event, note: ev.note, username: ev.username
+    }).select().single());
+  },
+
+  // ── materiais (baixa de estoque feita pela rota) ──
+  async addMaterial(orderId, m) {
+    return query(s => s.from(TABLES.woMaterials).insert({
+      order_id: orderId, stock_id: m.stockId, code: m.code, name: m.name,
+      category: m.category, quantity: m.quantity, unit: m.unit, unit_price: m.unitPrice
+    }).select().single());
+  },
+  async removeMaterial(materialId) {
+    return query(s => s.from(TABLES.woMaterials).delete().eq('id', materialId));
+  },
+
+  // ── fotos / anexos ──
+  async addPhoto(orderId, p) {
+    return query(s => s.from(TABLES.woPhotos).insert({
+      order_id: orderId, phase: p.phase, url: p.url, caption: p.caption,
+      mime: p.mime, uploaded_by: p.uploadedBy
+    }).select().single());
+  },
+  async removePhoto(photoId) {
+    return query(s => s.from(TABLES.woPhotos).delete().eq('id', photoId));
+  }
+};
+
+// ═══════════════════════════════════════════
+//  PURCHASE REQUESTS (Lista de compras)
+// ═══════════════════════════════════════════
+export const purchases = {
+  async getAll(status) {
+    return query(s => {
+      let q = s.from(TABLES.purchases).select('*').order('created_at', { ascending: false });
+      if (status && status !== 'all') q = q.eq('status', status);
+      return q;
+    });
+  },
+  async create(data) {
+    return query(s => s.from(TABLES.purchases).insert({
+      stock_id: data.stockId, material: data.material, quantity: data.quantity,
+      unit: data.unit, supplier_id: data.supplierId, last_price: data.lastPrice,
+      order_id: data.orderId, status: data.status || 'pendente', created_by: data.createdBy
+    }).select().single());
+  },
+  async update(id, data) {
+    return query(s => s.from(TABLES.purchases).update({
+      ...data, updated_at: new Date().toISOString()
+    }).eq('id', id).select().single());
+  },
+  async delete(id) {
+    return query(s => s.from(TABLES.purchases).delete().eq('id', id));
   }
 };
 

@@ -17,6 +17,7 @@ import logger from './utils/logger.js';
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import maintenanceRoutes from './routes/maintenance.js';
+import workOrderRoutes from './routes/workOrders.js';
 import stockRoutes from './routes/stock.js';
 import supplierRoutes from './routes/suppliers.js';
 import dashboardRoutes from './routes/dashboard.js';
@@ -62,6 +63,7 @@ if (!env.isProduction) {
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/dashboard', dashboardRoutes);
