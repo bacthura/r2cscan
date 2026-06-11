@@ -775,6 +775,9 @@
       <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.8rem" onclick="openMovementModal()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M12 5v14M5 12l7-7 7 7"/></svg>Entrada/Saída
       </button>
+      <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.8rem" onclick="goPage('page-purchases')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>Lista de Compras
+      </button>
     </div>
     <div id="stock-list"></div>
   </div>
@@ -2425,7 +2428,7 @@ async function saveSupplier() {
   const editId = document.getElementById('supp-edit-id').value;
   const id = editId || `supp_${Date.now()}`;
   const old = editId ? await dbGetById(STORE_SUPPLIER, id) : null;
-  const supp = { id, name, cnpj: document.getElementById('sup-cnpj').value.trim(), ie: document.getElementById('sup-ie').value.trim(), contact: document.getElementById('sup-contact').value.trim(), phone: document.getElementById('sup-phone').value.trim(), email: document.getElementById('sup-email').value.trim(), address: document.getElementById('sup-addr').value.trim(), category: document.getElementById('sup-cat').value.trim(), obs: document.getElementById('sup-obs').value.trim(), createdAt: old?.createdAt || Date.now(), updatedAt: Date.now() };
+  const supp = { id, name, tradeName: document.getElementById('sup-trade').value.trim(), cnpj: document.getElementById('sup-cnpj').value.trim(), ie: document.getElementById('sup-ie').value.trim(), contact: document.getElementById('sup-contact').value.trim(), responsible: document.getElementById('sup-resp').value.trim(), phone: document.getElementById('sup-phone').value.trim(), whatsapp: document.getElementById('sup-whats').value.trim(), email: document.getElementById('sup-email').value.trim(), address: document.getElementById('sup-addr').value.trim(), category: document.getElementById('sup-cat').value.trim(), obs: document.getElementById('sup-obs').value.trim(), createdAt: old?.createdAt || Date.now(), updatedAt: Date.now() };
   await dbPut(STORE_SUPPLIER, supp);
   closeSupplierModal();
   toast('Fornecedor salvo!');
@@ -3181,7 +3184,7 @@ function osCan(action) {
   const role = (userProfile.role || '').toLowerCase();
   if (role === 'visualizador') return action === 'view';
   if (role === 'tecnico') return ['view','edit','conclude'].includes(action);
-  if (role === 'supervisor') return action !== 'delete' || true; // supervisor: tudo menos exclusão definitiva é livre
+  if (role === 'supervisor') return action !== 'delete'; // supervisor: tudo, exceto exclusão definitiva (só admin)
   // fallback para o modelo can(module,action) já existente
   if (typeof can === 'function') {
     if (action === 'view') return can('maintenance','view');

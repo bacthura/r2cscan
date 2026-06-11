@@ -216,10 +216,13 @@ export const suppliers = {
     return query(supabase => supabase.from(TABLES.suppliers).insert({
       id: data.id,
       name: data.name,
+      trade_name: data.tradeName,
       cnpj: data.cnpj,
       ie: data.ie,
       contact: data.contact,
+      responsible: data.responsible,
       phone: data.phone,
+      whatsapp: data.whatsapp,
       email: data.email,
       address: data.address,
       category: data.category,
@@ -232,10 +235,13 @@ export const suppliers = {
   async update(id, data) {
     return query(supabase => supabase.from(TABLES.suppliers).update({
       name: data.name,
+      trade_name: data.tradeName,
       cnpj: data.cnpj,
       ie: data.ie,
       contact: data.contact,
+      responsible: data.responsible,
       phone: data.phone,
+      whatsapp: data.whatsapp,
       email: data.email,
       address: data.address,
       category: data.category,
