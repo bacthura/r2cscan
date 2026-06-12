@@ -5,6 +5,7 @@
 import { initDB, getAll, getById, save, remove, STORES } from './utils/db.js';
 import toast from './utils/toast.js';
 import api from './utils/api.js';
+import { escapeHTML } from './utils/format.js';
 import { startScanner, stopScanner, toggleCamera, requestCameraPermission } from './scanner.js';
 
 // ═══════════════════════════════════════════
@@ -1295,16 +1296,6 @@ window.checkAdminPw = async function() {
 // ═══════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════
-function escapeHTML(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, '&#x27;');
-}
-
 function getEmptyState(context) {
   return `<div class="empty-state">
     <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
