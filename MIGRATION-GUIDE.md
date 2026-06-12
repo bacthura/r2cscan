@@ -53,9 +53,12 @@ Migrar nesta ordem. NÃO pular etapas.
        openAddModal, editProduct, closeAddModal, saveProduct, previewPhoto,
        addSpecField, resetSpecFields — hooks p/ renderHome/renderAdmin/scanner
        via registerProductHooks; state exportado do app.js)
-- [ ] **2. Estoque** → `src/js/modules/stock.js`
-      (openStockModal, saveStockItem, openMovementModal, saveMovement,
-       setStockTab, toggleMovementFields)
+- [x] **2. Estoque** → `src/js/modules/stock.js` ✅ 2026-06-12
+      (setStockTab, openStockModal, closeStockModal, saveStockItem, renderStock,
+       openMovementModal, openMovementModalForItem, closeMovementModal,
+       toggleMovementFields, saveMovement, renderMovements — sem hooks, módulo
+       autocontido; openStockModal aceita id-string OU objeto, botão ✏️ passou
+       a passar só o id em vez de JSON serializado no onclick)
 - [ ] **3. Fornecedores** → `src/js/modules/suppliers.js`
       (openSupplierModal, saveSupplier, closeSupplierModal)
 - [ ] **4. Compras** → `src/js/modules/purchases.js`
@@ -73,6 +76,16 @@ Migrar nesta ordem. NÃO pular etapas.
 - [ ] **8. FINAL** → trocar o `<script>` inline do index.html por
       `<script type="module" src="/src/js/main.js"></script>`,
       testar tudo, e SÓ ENTÃO apagar o JS antigo do index.html.
+
+### Notas técnicas (lembretes entre módulos)
+
+- Movimentações vivem em localStorage('r2c_movements'). Estoque (módulo 2) e
+  Ordens de Serviço (módulo 6) escrevem nas duas. Ao migrar OS, REUSAR saveMovement
+  de stock.js — não duplicar a lógica de localStorage. Avaliar mover para a store
+  MOVEMENTS do IndexedDB (já existe em db.js) numa limpeza futura.
+- O scanner novo (src/js/scanner.js, html5-qrcode) espera um elemento
+  `#scanner-reader`; o HTML atual tem o markup antigo (`#scanner-video`/`#scanner-canvas`
+  do jsQR). Ajustar o markup no passo 8.
 
 ---
 
