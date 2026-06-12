@@ -14,6 +14,11 @@ import {
   shareProduct, toggleFav, duplicateProduct, openAddModal,
   editProduct, closeAddModal, saveProduct, previewPhoto, addSpecField
 } from './modules/products.js';
+import {
+  setStockTab, openStockModal, closeStockModal, saveStockItem, renderStock,
+  openMovementModal, openMovementModalForItem, closeMovementModal,
+  toggleMovementFields, saveMovement
+} from './modules/stock.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -495,185 +500,18 @@ window.showMaintDay = async function(dateStr) {
 };
 
 // ═══════════════════════════════════════════
-// ESTOQUE
+// ESTOQUE — módulo migrado (modules/stock.js)
+// Bindings para os handlers inline (onclick=) do HTML
 // ═══════════════════════════════════════════
-window.setStockTab = function(el, tab) {
-  document.querySelectorAll('#stock-tabs .tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  state.stockTab = tab;
-  const items = document.getElementById('stock-items');
-  const movements = document.getElementById('stock-movements');
-  if (items) items.style.display = tab === 'items' ? 'block' : 'none';
-  if (movements) movements.style.display = tab === 'movements' ? 'block' : 'none';
-  if (tab === 'movements') renderMovements();
-};
-
-window.openStockModal = function(data) {
-  const editId = document.getElementById('stock-edit-id');
-  if (editId) editId.value = data?.id || '';
-  const title = document.getElementById('modal-stock-title');
-  if (title) title.textContent = data ? '✏️ Editar Item' : '📦 Novo Item de Estoque';
-  setVal('s-name', data?.name);
-  setVal('s-qty', data?.qty || 0);
-  setVal('s-min', data?.min || 10);
-  setVal('s-unit', data?.unit || 'un');
-  setVal('s-local', data?.location);
-  setVal('s-obs', data?.obs);
-  document.getElementById('modal-stock')?.classList.add('open');
-};
-
-window.closeStockModal = function() {
-  document.getElementById('modal-stock')?.classList.remove('open');
-};
-
-window.saveStockItem = async function() {
-  const name = (document.getElementById('s-name')?.value || '').trim();
-  if (!name) { toast('Nome obrigatório', 'error'); return; }
-  const editId = document.getElementById('stock-edit-id')?.value || '';
-  const id = editId || `stock_${Date.now()}`;
-  const old = editId ? await getById(STORES.STOCK, id) : null;
-  const item = {
-    id, name,
-    qty: parseInt(document.getElementById('s-qty')?.value) || 0,
-    min: parseInt(document.getElementById('s-min')?.value) || 10,
-    unit: document.getElementById('s-unit')?.value || 'un',
-    location: (document.getElementById('s-local')?.value || '').trim(),
-    obs: (document.getElementById('s-obs')?.value || '').trim(),
-    createdAt: old?.createdAt || Date.now(),
-    updatedAt: Date.now()
-  };
-  await save(STORES.STOCK, item);
-  window.closeStockModal();
-  toast('Item salvo!', 'success');
-  renderStock();
-};
-
-async function renderStock() {
-  let all = await getAll(STORES.STOCK);
-  const query = (document.getElementById('stock-search')?.value || '').toLowerCase();
-  if (query) all = all.filter(i => i.name.toLowerCase().includes(query) || (i.location || '').toLowerCase().includes(query));
-  all.sort((a, b) => a.name.localeCompare(b.name));
-
-  const list = document.getElementById('stock-list');
-  if (!list) return;
-  if (all.length === 0) {
-    list.innerHTML = getEmptyState('nenhum item no estoque');
-    return;
-  }
-  list.innerHTML = all.map(i => {
-    const alerta = i.qty <= i.min;
-    return `<div class="mini-card">
-      <div class="mc-icon" style="background:${alerta ? 'rgba(255,68,102,.1)' : 'rgba(0,245,160,.1)'}">${alerta ? '⚠️' : '📦'}</div>
-      <div class="mc-body">
-        <div class="mc-title">${escapeHTML(i.name)} <span style="font-weight:400;color:var(--text2)">(${i.qty} ${i.unit})</span></div>
-        <div class="mc-sub">${i.location || 'Sem localização'}${alerta ? ' · <span style="color:var(--danger)">Estoque baixo!</span>' : ''}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-        <span style="font-family:var(--font-head);font-weight:700;font-size:1.1rem;color:${alerta ? 'var(--danger)' : 'var(--accent)'}">${i.qty}</span>
-        <div style="display:flex;gap:4px">
-          <button onclick="event.stopPropagation();window.openMovementModalForItem('${i.id}','${escapeHTML(i.name)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:.6rem;cursor:pointer;color:var(--accent2)">↕</button>
-          <button onclick="event.stopPropagation();window.openStockModal(JSON.parse('${JSON.stringify(i).replace(/'/g, '&#39;')}'))" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:.6rem;cursor:pointer;color:var(--text2)">✏️</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ═══════════════════════════════════════════
-// MOVIMENTAÇÕES
-// ═══════════════════════════════════════════
-window.openMovementModal = function() {
-  state.movItemId = null;
-  setVal('mov-item', '');
-  setVal('mov-qty', 1);
-  setVal('mov-type', 'entrada');
-  setVal('mov-reason', '');
-  populateMovSelect();
-  document.getElementById('modal-movement')?.classList.add('open');
-};
-
-window.openMovementModalForItem = function(id, name) {
-  state.movItemId = id;
-  setVal('mov-item', id);
-  setVal('mov-qty', 1);
-  setVal('mov-type', 'entrada');
-  setVal('mov-reason', '');
-  populateMovSelect();
-  document.getElementById('modal-movement')?.classList.add('open');
-};
-
-window.closeMovementModal = function() {
-  document.getElementById('modal-movement')?.classList.remove('open');
-};
-
-async function populateMovSelect() {
-  const all = await getAll(STORES.STOCK);
-  const sel = document.getElementById('mov-item');
-  if (sel) {
-    sel.innerHTML = all.map(i => `<option value="${i.id}" ${i.id === state.movItemId ? 'selected' : ''}>${escapeHTML(i.name)}</option>`).join('');
-  }
-}
-
-window.toggleMovementFields = function() {
-  const type = document.getElementById('mov-type')?.value;
-  const quemPegou = document.getElementById('mov-quem-pegou-field');
-  const quemDevolveu = document.getElementById('mov-quem-devolveu-field');
-  if (quemPegou) quemPegou.style.display = type === 'saida' ? 'block' : 'none';
-  if (quemDevolveu) quemDevolveu.style.display = type === 'entrada' ? 'block' : 'none';
-};
-
-window.saveMovement = async function() {
-  const itemId = document.getElementById('mov-item')?.value;
-  if (!itemId) { toast('Selecione um item', 'error'); return; }
-  const type = document.getElementById('mov-type')?.value;
-  const qty = parseInt(document.getElementById('mov-qty')?.value) || 1;
-  const responsavel = (document.getElementById('mov-responsavel')?.value || '').trim();
-  const devolvidoPor = (document.getElementById('mov-devolveu')?.value || '').trim();
-  const reason = (document.getElementById('mov-reason')?.value || '').trim() || (type === 'entrada' ? 'Entrada manual' : 'Saída manual');
-  const item = await getById(STORES.STOCK, itemId);
-  if (!item) { toast('Item não encontrado', 'error'); return; }
-  if (type === 'saida') {
-    if (!responsavel) { toast('Informe quem retirou o material', 'error'); return; }
-    if (item.qty < qty) { toast('Quantidade insuficiente em estoque', 'error'); return; }
-  }
-  if (type === 'entrada' && !devolvidoPor) { toast('Informe quem devolveu o material', 'error'); return; }
-
-  item.qty += type === 'entrada' ? qty : -qty;
-  item.updatedAt = Date.now();
-  await save(STORES.STOCK, item);
-
-  const mov = { id: `mov_${Date.now()}`, itemId, itemName: item.name, type, qty, reason, responsavel, devolvidoPor, timestamp: Date.now() };
-  const movs = JSON.parse(localStorage.getItem('r2c_movements') || '[]');
-  movs.unshift(mov);
-  localStorage.setItem('r2c_movements', JSON.stringify(movs.slice(0, 500)));
-
-  window.closeMovementModal();
-  toast('Movimentação registrada!', 'success');
-  renderStock();
-  if (state.stockTab === 'movements') renderMovements();
-};
-
-async function renderMovements() {
-  const movs = JSON.parse(localStorage.getItem('r2c_movements') || '[]');
-  const list = document.getElementById('movement-list');
-  if (!list) return;
-  if (movs.length === 0) {
-    list.innerHTML = getEmptyState('nenhuma movimentação registrada');
-    return;
-  }
-  list.innerHTML = movs.map(m => {
-    let extraInfo = '';
-    if (m.type === 'saida' && m.responsavel) extraInfo = ` · Retirado por: ${m.responsavel}`;
-    if (m.type === 'entrada' && m.devolvidoPor) extraInfo = ` · Devolvido por: ${m.devolvidoPor}`;
-    return `<div class="mini-card">
-      <div class="mc-icon" style="background:${m.type === 'entrada' ? 'rgba(0,245,160,.1)' : 'rgba(255,68,102,.1)'}">${m.type === 'entrada' ? '📥' : '📤'}</div>
-      <div class="mc-body">
-        <div class="mc-title">${escapeHTML(m.itemName)} <span style="color:${m.type === 'entrada' ? 'var(--accent)' : 'var(--danger)'}">${m.type === 'entrada' ? '+' : '-'}${m.qty}</span></div>
-        <div class="mc-sub">${m.reason}${extraInfo} · ${new Date(m.timestamp).toLocaleString('pt-BR')}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
+window.setStockTab = setStockTab;
+window.openStockModal = openStockModal;
+window.closeStockModal = closeStockModal;
+window.saveStockItem = saveStockItem;
+window.openMovementModal = openMovementModal;
+window.openMovementModalForItem = openMovementModalForItem;
+window.closeMovementModal = closeMovementModal;
+window.toggleMovementFields = toggleMovementFields;
+window.saveMovement = saveMovement;
 
 // ═══════════════════════════════════════════
 // FORNECEDORES

@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0A0A0F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="R2C-Scan">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>[TESTE src/js] R2C-Scan — Gestão Completa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Firebase SDK (compat) — login dos funcionários + Firestore (controle de acesso) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root {
+    --bg: #0A0A0F;
+    --bg2: #111118;
+    --bg3: #1A1A24;
+    --card: #14141E;
+    --border: #2A2A3A;
+    --accent: #00F5A0;
+    --accent2: #00C8FF;
+    --accent3: #FF6B35;
+    --accent4: #A855F7;
+    --accent5: #F59E0B;
+    --text: #F0F0FF;
+    --text2: #8888AA;
+    --danger: #FF4466;
+    --success: #00F5A0;
+    --warning: #F59E0B;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --nav-h: 70px;
+  }
+  .light-theme {
+    --bg: #F5F5FA;
+    --bg2: #EEEEF4;
+    --bg3: #E4E4EC;
+    --card: #FFFFFF;
+    --border: #D0D0DC;
+    --text: #1A1A2E;
+    --text2: #6B6B8A;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    font-family: var(--font-mono);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-bottom: calc(var(--nav-h) + 20px);
+    transition: background .3s, color .3s;
+  }
+
+  /* ── SPLASH ── */
+  #splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    transition: opacity 0.5s;
+  }
+  #splash .logo-ring {
+    width: 80px; height: 80px; border-radius: 50%;
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    animation: pulseRing 1.5s ease-in-out infinite;
+  }
+  #splash .logo-ring svg { width:36px; height:36px; }
+  #splash h1 { font-family:var(--font-head); font-size:1.8rem; font-weight:800; letter-spacing:-1px; }
+  #splash h1 span { color: var(--accent); }
+  #splash p { color:var(--text2); font-size:.75rem; letter-spacing:2px; text-transform:uppercase; }
+  @keyframes pulseRing { 0%,100%{box-shadow:0 0 0 0 rgba(0,245,160,.4)} 50%{box-shadow:0 0 0 12px rgba(0,245,160,0)} }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    position: sticky; top:0; z-index:100;
+    background: rgba(10,10,15,.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .light-theme #topbar { background: rgba(245,245,250,.95); }
+  #topbar .brand { font-family:var(--font-head); font-weight:800; font-size:1rem; letter-spacing:-0.5px; display:flex; align-items:center; gap:8px; }
+  #topbar .brand span { color:var(--accent); }
+  #topbar .brand small { font-size:.6rem; color:var(--text2); font-weight:400; display:block; letter-spacing:0; }
+  #topbar .topbar-right { display:flex; gap:8px; align-items:center; }
+  .icon-btn {
+    width:36px; height:36px; border-radius:10px;
+    background:var(--bg3); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition: all .2s; flex-shrink:0;
+  }
+  .icon-btn:active { transform:scale(.88); background:var(--border); }
+  .icon-btn svg { width:17px; height:17px; }
+
+  /* ── BOTTOM NAV ── */
+  #bottomnav {
+    position: fixed; bottom:0; left:0; right:0; z-index:100;
+    background: rgba(10,10,15,.97);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 6px 0 10px;
+  }
+  .light-theme #bottomnav { background: rgba(245,245,250,.97); }
+  #bottomnav::-webkit-scrollbar { display:none; }
+  .nav-item {
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding:4px 10px; cursor:pointer; transition: all .2s;
+    border-radius:10px; margin:0 2px; min-width:56px; flex-shrink:0;
+  }
+  .nav-item svg { width:20px; height:20px; }
+  .nav-item span { font-size:.5rem; letter-spacing:.5px; text-transform:uppercase; color:var(--text2); white-space:nowrap; }
+  .nav-item.active span { color:var(--accent); }
+  .nav-item.active svg path, .nav-item.active svg rect, .nav-item.active svg circle { stroke:var(--accent); }
+  .nav-item:active { transform:scale(.88); }
+
+  /* ── PAGES ── */
+  .page { display:none; padding:16px; animation: fadeIn .3s ease; }
+  .page.active { display:block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  /* ── SCANNER ── */
+  #scanner-wrap {
+    position: relative; border-radius:20px; overflow:hidden;
+    background:#000; aspect-ratio:1/1; width:100%;
+    border: 1px solid var(--border);
+  }
+  #scanner-wrap video { width:100%; height:100%; object-fit:cover; display:block; }
+  #scanner-wrap canvas { display:none; }
+  #scanner-video { width:100%; height:100%; object-fit:cover; display:block; }
+  #scanner-canvas { display:none; }
+  /* html5-qrcode scanner container */
+  #scanner-reader { width:100%; height:100%; }
+  #scanner-reader video { width:100%; height:100% !important; object-fit:cover; }
+  #scanner-reader img { display:none; }
+  .scan-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:10; }
+  .scan-frame { width:65%; aspect-ratio:1/1; position:relative; }
+  .scan-frame::before, .scan-frame::after, .scan-frame .c3, .scan-frame .c4 {
+    content:''; position:absolute; width:24px; height:24px; border-color:var(--accent); border-style:solid;
+  }
+  .scan-frame::before { top:0;left:0; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+  .scan-frame::after  { top:0;right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+  .scan-frame .c3     { bottom:0;left:0; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+  .scan-frame .c4     { bottom:0;right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+  .scan-line {
+    position:absolute; left:5%; right:5%; height:2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scanLine 2s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--accent);
+  }
+  @keyframes scanLine { 0%{top:5%} 50%{top:92%} 100%{top:5%} }
+
+  .scanner-loading { text-align:center; padding:20px; color:var(--text2); }
+  .scanner-loading.hidden { display:none; }
+  .scanner-error { color:var(--danger); text-align:center; padding:20px; font-size:.75rem; }
+  .scanner-error button { margin-top:10px; }
+
+  .scanner-modes { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .mode-btn {
+    padding:12px; border-radius:12px; border:1px solid var(--border);
+    background:var(--card); cursor:pointer; transition:all .2s;
+    display:flex; align-items:center; gap:8px;
+    font-family:var(--font-mono); font-size:.75rem; color:var(--text2);
+  }
+  .mode-btn.active-mode { border-color:var(--accent); color:var(--accent); background:rgba(0,245,160,.07); }
+  .mode-btn svg { width:18px; height:18px; flex-shrink:0; }
+  .mode-btn:active { transform:scale(.94); }
+
+  .scan-result { margin-top:12px; padding:14px; border-radius:12px; background:var(--card); border:1px solid var(--border); display:none; }
+  .scan-result.show { display:block; animation:fadeIn .3s ease; }
+  .scan-result label { font-size:.6rem; letter-spacing:2px; color:var(--text2); text-transform:uppercase; }
+  .scan-result .result-val { font-family:var(--font-head); font-size:.95rem; margin-top:4px; color:var(--accent); word-break:break-all; }
+
+  #ai-status { margin-top:12px; padding:12px; border-radius:12px; background:var(--card); border:1px solid var(--border); display:none; }
+  #ai-status.show { display:flex; gap:10px; align-items:flex-start; }
+  .ai-spinner { width:18px; height:18px; flex-shrink:0; border:2px solid var(--border); border-top-color:var(--accent2); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #ai-status p { font-size:.75rem; color:var(--text2); line-height:1.5; }
+  #ai-status p strong { color:var(--accent2); display:block; margin-bottom:4px; }
+
+  /* ── PRODUCT CARD ── */
+  .product-card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden; margin-bottom:12px;
+    transition:all .2s; cursor:pointer;
+  }
+  .product-card:active { transform:scale(.97); }
+  .product-card .card-img { width:100%; height:150px; object-fit:cover; background:var(--bg3); display:flex; align-items:center; justify-content:center; }
+  .product-card .card-img img { width:100%; height:100%; object-fit:cover; }
+  .product-card .card-img .no-img { color:var(--text2); font-size:.7rem; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .card-body { padding:12px; }
+  .card-tag {
+    display:inline-block; font-size:.55rem; padding:2px 8px;
+    border-radius:5px; background:rgba(0,245,160,.1); color:var(--accent);
+    border:1px solid rgba(0,245,160,.2); letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;
+  }
+  .card-name { font-family:var(--font-head); font-weight:700; font-size:.95rem; margin-bottom:3px; }
+  .card-sku { font-size:.68rem; color:var(--text2); }
+  .card-footer { display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+  .card-footer .status { font-size:.65rem; color:var(--accent); display:flex; align-items:center; gap:4px; }
+  .card-footer .status::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--accent); display:inline-block; }
+  .fav-btn { background:none; border:none; cursor:pointer; padding:4px; }
+  .fav-btn svg { width:18px; height:18px; transition:all .2s; }
+  .fav-btn.active svg { fill:var(--accent3); stroke:var(--accent3); }
+
+  /* ── SEARCH ── */
+  .search-wrap { position:relative; margin-bottom:12px; display:flex; gap:8px; }
+  .search-wrap input {
+    flex:1; background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:11px 14px 11px 40px;
+    color:var(--text); font-family:var(--font-mono); font-size:.8rem;
+    outline:none; transition:border-color .2s;
+  }
+  .search-wrap input:focus { border-color:var(--accent); }
+  .search-wrap .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; pointer-events:none; }
+  .search-wrap input::placeholder { color:var(--text2); }
+  .voice-btn { width:36px; height:36px; border-radius:10px; background:var(--card); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+  .voice-btn svg { width:16px; height:16px; }
+  .voice-btn.listening { background:rgba(0,245,160,.15); border-color:var(--accent); animation:pulseMic 1s infinite; }
+  @keyframes pulseMic { 0%,100%{box-shadow:0 0 0 0 rgba(0,245,160,.3)} 50%{box-shadow:0 0 0 8px rgba(0,245,160,0)} }
+
+  /* ── FILTERS ── */
+  .filter-row { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px; scrollbar-width:none; }
+  .filter-row::-webkit-scrollbar { display:none; }
+  .filter-chip {
+    flex-shrink:0; padding:6px 12px; border-radius:18px;
+    border:1px solid var(--border); background:var(--card);
+    font-family:var(--font-mono); font-size:.68rem; color:var(--text2);
+    cursor:pointer; transition:all .2s; white-space:nowrap;
+  }
+  .filter-chip.active { border-color:var(--accent); color:var(--accent); background:rgba(0,245,160,.08); }
+
+  .sort-row { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .sort-chip {
+    padding:4px 10px; border-radius:10px; border:1px solid var(--border);
+    background:var(--card); font-size:.65rem; color:var(--text2); cursor:pointer;
+    font-family:var(--font-mono); transition:all .2s;
+  }
+  .sort-chip.active { border-color:var(--accent2); color:var(--accent2); }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size:.6rem; letter-spacing:2px; text-transform:uppercase;
+    color:var(--text2); margin-bottom:10px; display:flex; align-items:center; gap:8px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* ── STATS ── */
+  .stats-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+  .stat-card {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:14px; position:relative; overflow:hidden;
+  }
+  .stat-card::after {
+    content:''; position:absolute; right:-10px; top:-10px;
+    width:50px; height:50px; border-radius:50%;
+    background:radial-gradient(circle, rgba(0,245,160,.12), transparent);
+  }
+  .stat-val { font-family:var(--font-head); font-size:1.6rem; font-weight:800; line-height:1; }
+  .stat-val.blue { color:var(--accent2); }
+  .stat-val.green { color:var(--accent); }
+  .stat-val.orange { color:var(--accent3); }
+  .stat-val.purple { color:var(--accent4); }
+  .stat-val.yellow { color:var(--accent5); }
+  .stat-label { font-size:.62rem; color:var(--text2); margin-top:3px; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:4px; }
+
+  /* ── FORM ── */
+  .form-group { margin-bottom:14px; }
+  .form-group label { font-size:.62rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text2); display:block; margin-bottom:6px; }
+  .form-group input, .form-group textarea, .form-group select {
+    width:100%; background:var(--card); border:1px solid var(--border);
+    border-radius:10px; padding:11px 14px; color:var(--text);
+    font-family:var(--font-mono); font-size:.8rem; outline:none;
+    transition:border-color .2s; resize:vertical;
+    -webkit-appearance:none;
+  }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color:var(--accent); }
+  .form-group textarea { min-height:80px; }
+  .form-group select option { background:var(--bg2); }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  .btn {
+    width:100%; padding:13px; border-radius:12px; border:none;
+    font-family:var(--font-head); font-weight:700; font-size:.88rem;
+    letter-spacing:.5px; cursor:pointer; transition:all .2s;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .btn-primary { background:var(--accent); color:#000; }
+  .btn-primary:active { transform:scale(.96); filter:brightness(1.1); }
+  .btn-secondary { background:var(--card); color:var(--text); border:1px solid var(--border); }
+  .btn-danger { background:rgba(255,68,102,.1); color:var(--danger); border:1px solid rgba(255,68,102,.3); }
+  .btn-success { background:rgba(0,245,160,.1); color:var(--accent); border:1px solid rgba(0,245,160,.3); }
+  .btn-warning { background:rgba(245,158,11,.1); color:var(--accent5); border:1px solid rgba(245,158,11,.3); }
+
+  /* ── PHOTO UPLOAD ── */
+  .photo-upload {
+    border:2px dashed var(--border); border-radius:12px;
+    aspect-ratio:16/9; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:6px;
+    cursor:pointer; transition:border-color .2s; overflow:hidden;
+    position:relative;
+  }
+  .photo-upload:hover { border-color:var(--accent); }
+  .photo-upload img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+  .photo-upload .upload-label { font-size:.7rem; color:var(--text2); z-index:1; pointer-events:none; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .photo-upload .upload-label svg { width:24px; height:24px; }
+
+  /* ── QR ── */
+  #qr-preview-wrap { background:white; border-radius:12px; padding:14px; display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:14px; display:none; }
+  #qr-preview-wrap.show { display:flex; }
+  #qr-canvas-output { border-radius:6px; }
+  #qr-preview-wrap p { font-size:.65rem; color:#333; }
+
+  /* ── DETAIL ── */
+  #detail-page {
+    position:fixed; inset:0; z-index:200;
+    background:var(--bg); transform:translateX(100%);
+    transition:transform .3s cubic-bezier(.4,0,.2,1);
+    overflow-y:auto; padding-bottom:30px;
+  }
+  #detail-page.open { transform:none; }
+  /* ── Detalhe da Ordem de Serviço ── */
+  #os-detail-page {
+    position:fixed; inset:0; z-index:200; background:var(--bg);
+    transform:translateX(100%); transition:transform .3s cubic-bezier(.4,0,.2,1);
+    display:flex; flex-direction:column;
+  }
+  #os-detail-page.open { transform:none; }
+  .os-detail-topbar { display:flex; align-items:center; gap:10px; padding:14px 14px 8px; }
+  .os-detail-tabs { padding:0 14px; flex-wrap:wrap; }
+  .os-detail-body { flex:1; overflow-y:auto; padding:12px 14px 40px; }
+  .os-field-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .os-field { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 10px; }
+  .os-field label { display:block; font-size:.6rem; color:var(--text2); text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+  .os-field span { font-size:.8rem; color:var(--text); font-family:var(--font-mono); }
+  .os-tl-item { display:flex; gap:10px; padding:8px 0; border-left:2px solid var(--accent); padding-left:12px; margin-left:6px; position:relative; }
+  .os-tl-item::before { content:''; position:absolute; left:-5px; top:12px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+  .os-gallery { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .os-gallery img, .os-gallery video { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; cursor:pointer; }
+  .os-compare { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .os-compare figure { margin:0; }
+  .os-compare img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; background:var(--bg3); }
+  .os-compare figcaption { font-size:.62rem; color:var(--text2); text-align:center; margin-top:4px; text-transform:uppercase; }
+  @media print { #bottomnav, .os-detail-topbar, .os-detail-tabs { display:none !important; } #os-detail-page { position:static; transform:none; } .os-dtab { display:block !important; } }
+  .detail-hero { width:100%; height:240px; background:var(--bg3); position:relative; overflow:hidden; }
+  .detail-hero img { width:100%; height:100%; object-fit:cover; }
+  .detail-hero-overlay { position:absolute; inset:0; background:linear-gradient(to bottom, transparent 40%, var(--bg) 100%); }
+  .detail-back {
+    position:absolute; top:14px; left:14px; z-index:10;
+    width:38px; height:38px; border-radius:50%;
+    background:rgba(0,0,0,.6); backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .detail-body { padding:0 16px 20px; margin-top:-30px; position:relative; }
+  .detail-category { display:inline-block; font-size:.55rem; padding:3px 8px; border-radius:5px; background:rgba(0,245,160,.1); color:var(--accent); border:1px solid rgba(0,245,160,.25); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+  .detail-title { font-family:var(--font-head); font-size:1.4rem; font-weight:800; line-height:1.2; margin-bottom:4px; }
+  .detail-sku { font-size:.7rem; color:var(--text2); margin-bottom:12px; }
+
+  .spec-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; }
+  .spec-item { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; }
+  .spec-key { font-size:.58rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text2); margin-bottom:3px; }
+  .spec-val { font-size:.82rem; font-weight:500; color:var(--text); }
+
+  .tech-specs-area { background:var(--card); border-radius:12px; border:1px solid var(--border); overflow:hidden; margin-top:12px; }
+  .tech-spec-row { display:flex; padding:10px 12px; border-bottom:1px solid var(--border); }
+  .tech-spec-row:last-child { border-bottom:none; }
+  .tech-spec-row .tsk { color:var(--text2); font-size:.72rem; flex:1; }
+  .tech-spec-row .tsv { color:var(--text); font-size:.72rem; flex:1; text-align:right; }
+
+  .qr-section { background:white; border-radius:14px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:12px; }
+  .qr-section p { font-size:.65rem; color:#555; }
+  .qr-section strong { font-family:var(--font-head); font-size:.8rem; color:#111; }
+
+  .ai-rec-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(0,200,255,.1); border:1px solid rgba(0,200,255,.25); color:var(--accent2); padding:5px 10px; border-radius:7px; font-size:.65rem; letter-spacing:1px; margin-bottom:12px; }
+  .ai-rec-badge svg { width:12px; height:12px; }
+
+  #admin-badge { display:inline-flex; align-items:center; gap:6px; font-size:.6rem; background:rgba(255,107,53,.1); border:1px solid rgba(255,107,53,.25); color:var(--accent3); padding:4px 8px; border-radius:5px; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px; }
+
+  /* ── CARD VARIANTS ── */
+  .mini-card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:12px; margin-bottom:8px;
+    display:flex; align-items:center; gap:10px; cursor:pointer; transition:all .2s;
+  }
+  .mini-card:active { transform:scale(.97); }
+  .mini-card .mc-icon {
+    width:40px; height:40px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    font-size:1.2rem;
+  }
+  .mini-card .mc-body { flex:1; min-width:0; }
+  .mini-card .mc-title { font-family:var(--font-head); font-size:.85rem; font-weight:600; }
+  .mini-card .mc-sub { font-size:.65rem; color:var(--text2); margin-top:2px; }
+  .mc-tag {
+    font-size:.55rem; padding:2px 7px; border-radius:4px; letter-spacing:1px;
+    text-transform:uppercase; display:inline-block;
+  }
+  .mc-tag-green { background:rgba(0,245,160,.1); color:var(--accent); border:1px solid rgba(0,245,160,.2); }
+  .mc-tag-blue { background:rgba(0,200,255,.1); color:var(--accent2); border:1px solid rgba(0,200,255,.2); }
+  .mc-tag-red { background:rgba(255,68,102,.1); color:var(--danger); border:1px solid rgba(255,68,102,.2); }
+  .mc-tag-yellow { background:rgba(245,158,11,.1); color:var(--accent5); border:1px solid rgba(245,158,11,.2); }
+  .mc-tag-purple { background:rgba(168,85,247,.1); color:var(--accent4); border:1px solid rgba(168,85,247,.2); }
+
+  /* ── TOAST ── */
+  #toast {
+    position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--accent); color:#000; padding:8px 18px; border-radius:30px;
+    font-family:var(--font-head); font-weight:700; font-size:.8rem;
+    opacity:0; transition:all .3s; z-index:9999; white-space:nowrap;
+    pointer-events:none;
+  }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position:fixed; inset:0; z-index:300;
+    background:rgba(0,0,0,.7); backdrop-filter:blur(4px);
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal-sheet {
+    background:var(--bg2); border-radius:20px 20px 0 0;
+    border:1px solid var(--border); border-bottom:none;
+    width:100%; max-height:88vh; overflow-y:auto; padding:16px;
+    animation:slideUp .3s ease;
+  }
+  .light-theme .modal-sheet { background:var(--bg2); }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:none} }
+  .modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 14px; }
+  .modal-title { font-family:var(--font-head); font-size:1.1rem; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { display:flex; flex-direction:column; align-items:center; padding:50px 20px; gap:10px; text-align:center; }
+  .empty-state svg { width:44px; height:44px; opacity:.3; }
+  .empty-state p { color:var(--text2); font-size:.8rem; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  /* ── CHART ── */
+  .chart-wrap { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px; }
+  .chart-wrap canvas { max-height:200px; }
+
+  /* ── TIMELINE ── */
+  .timeline { position:relative; padding-left:20px; }
+  .timeline::before { content:''; position:absolute; left:6px; top:0; bottom:0; width:2px; background:var(--border); }
+  .tl-item { position:relative; margin-bottom:16px; }
+  .tl-item::before { content:''; position:absolute; left:-18px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+  .tl-item .tl-title { font-size:.82rem; font-weight:600; }
+  .tl-item .tl-sub { font-size:.68rem; color:var(--text2); margin-top:2px; }
+  .tl-item .tl-date { font-size:.6rem; color:var(--text2); margin-top:2px; }
+
+  /* ── STATUS BADGE ── */
+  .status-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; font-size:.6rem; letter-spacing:.5px; text-transform:uppercase; }
+  .status-badge.ok { background:rgba(0,245,160,.1); color:var(--accent); border:1px solid rgba(0,245,160,.2); }
+  .status-badge.warn { background:rgba(245,158,11,.1); color:var(--accent5); border:1px solid rgba(245,158,11,.2); }
+  .status-badge.danger { background:rgba(255,68,102,.1); color:var(--danger); border:1px solid rgba(255,68,102,.2); }
+  .status-badge.info { background:rgba(0,200,255,.1); color:var(--accent2); border:1px solid rgba(0,200,255,.2); }
+  .status-badge.purple { background:rgba(168,85,247,.1); color:var(--accent4); border:1px solid rgba(168,85,247,.2); }
+
+  /* ── TABS ── */
+  .tab-row { display:flex; gap:4px; margin-bottom:12px; overflow-x:auto; scrollbar-width:none; }
+  .tab-row::-webkit-scrollbar { display:none; }
+  .tab {
+    flex-shrink:0; padding:8px 14px; border-radius:10px;
+    border:1px solid var(--border); background:var(--card);
+    font-size:.72rem; color:var(--text2); cursor:pointer; font-family:var(--font-mono);
+    transition:all .2s; white-space:nowrap;
+  }
+  .tab.active { border-color:var(--accent2); color:var(--accent2); background:rgba(0,200,255,.07); }
+</style>
+</head>
+<body>
+
+<!-- AUTH GATE — acesso restrito a funcionários (bloqueia todo o app até login) -->
+<div id="auth-gate" hidden style="display:none!important;" data-original-style="" style="position:fixed;inset:0;z-index:100000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+  <!-- Estado: verificando sessão -->
+  <div id="gate-loading" style="text-align:center">
+    <div class="ai-spinner" style="width:32px;height:32px;margin:0 auto 14px"></div>
+    <p style="font-size:.8rem;color:var(--text2)">Verificando acesso...</p>
+  </div>
+  <!-- Cabeçalho comum -->
+  <!-- Tela: LOGIN -->
+  <div id="gate-login" style="display:none;width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:22px">
+      <h1 style="font-family:var(--font-head);font-size:1.7rem;font-weight:800;color:var(--accent)">R2C-Scan</h1>
+      <p style="font-size:.78rem;color:var(--text2);margin-top:8px">🔒 Acesso restrito aos funcionários</p>
+    </div>
+    <div id="gate-error" style="display:none;background:rgba(255,68,102,.1);border:1px solid var(--danger);border-radius:8px;padding:10px;margin-bottom:14px;font-size:.72rem;color:var(--danger)"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="gate-email" placeholder="seu@email.com" autocomplete="email" onkeypress="if(event.key==='Enter')document.getElementById('gate-pw').focus()">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="gate-pw" placeholder="••••••••" autocomplete="current-password" onkeypress="if(event.key==='Enter')handleGateLogin()">
+    </div>
+    <div id="gate-loading-btn" style="display:none;text-align:center;padding:10px">
+      <div class="ai-spinner" style="margin:0 auto 8px"></div>
+      <p style="font-size:.7rem;color:var(--text2)">Autenticando...</p>
+    </div>
+    <button class="btn btn-primary" id="gate-btn" style="width:100%" onclick="handleGateLogin()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg> Entrar
+    </button>
+    <p style="font-size:.72rem;color:var(--text2);text-align:center;margin-top:16px">Não tem acesso? <a href="#" onclick="gateShow('register');return false" style="color:var(--accent);text-decoration:none;font-weight:600">Pedir acesso</a></p>
+  </div>
+
+  <!-- Tela: CADASTRO (funcionário pede acesso) -->
+  <div id="gate-register" style="display:none;width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:22px">
+      <h1 style="font-family:var(--font-head);font-size:1.7rem;font-weight:800;color:var(--accent)">Pedir acesso</h1>
+      <p style="font-size:.78rem;color:var(--text2);margin-top:8px">Seu cadastro será liberado após aprovação do administrador.</p>
+    </div>
+    <div id="reg-error" style="display:none;background:rgba(255,68,102,.1);border:1px solid var(--danger);border-radius:8px;padding:10px;margin-bottom:14px;font-size:.72rem;color:var(--danger)"></div>
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="reg-name" placeholder="Seu nome" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="reg-email" placeholder="seu@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="reg-pw" placeholder="mínimo 6 caracteres" autocomplete="new-password" onkeypress="if(event.key==='Enter')handleGateRegister()">
+    </div>
+    <div id="reg-loading" style="display:none;text-align:center;padding:10px">
+      <div class="ai-spinner" style="margin:0 auto 8px"></div>
+      <p style="font-size:.7rem;color:var(--text2)">Enviando...</p>
+    </div>
+    <button class="btn btn-primary" id="reg-btn" style="width:100%" onclick="handleGateRegister()">Pedir acesso</button>
+    <p style="font-size:.72rem;color:var(--text2);text-align:center;margin-top:16px">Já tem conta? <a href="#" onclick="gateShow('login');return false" style="color:var(--accent);text-decoration:none;font-weight:600">Entrar</a></p>
+  </div>
+
+  <!-- Tela: STATUS (pendente / desativado) -->
+  <div id="gate-status" style="display:none;width:100%;max-width:360px;text-align:center">
+    <h1 style="font-family:var(--font-head);font-size:1.5rem;font-weight:800;color:var(--accent);margin-bottom:16px">R2C-Scan</h1>
+    <p id="gate-status-msg" style="font-size:.9rem;color:var(--text);line-height:1.6;margin-bottom:22px"></p>
+    <button class="btn btn-secondary" style="width:100%" onclick="handleLogout()">Sair</button>
+  </div>
+</div>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="logo-ring">
+    <svg viewBox="0 0 36 36" fill="none" stroke="#00F5A0" stroke-width="2">
+      <rect x="4" y="4" width="12" height="12" rx="2"/>
+      <rect x="20" y="4" width="12" height="12" rx="2"/>
+      <rect x="4" y="20" width="12" height="12" rx="2"/>
+      <circle cx="26" cy="26" r="5"/>
+      <line x1="26" y1="21" x2="26" y2="26"/>
+      <line x1="21" y1="26" x2="26" y2="26"/>
+    </svg>
+  </div>
+  <h1>R2C-<span>Scan</span></h1>
+  <p>Gestão Inteligente de Produtos</p>
+</div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:22px;height:22px">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>
+    </svg>
+    <div>R2C-<span>Scan</span><small>Gestão Completa</small></div>
+  </div>
+  <div class="topbar-right">
+    <div class="icon-btn" onclick="toggleTheme()" title="Alternar tema">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+      </svg>
+    </div>
+    <div class="icon-btn" onclick="openAdminModal()" title="Admin">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- PAGES -->
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val green" id="stat-total">0</div><div class="stat-label">Produtos</div></div>
+    <div class="stat-card"><div class="stat-val blue" id="stat-cats">0</div><div class="stat-label">Categorias</div></div>
+    <div class="stat-card"><div class="stat-val orange" id="stat-recent">0</div><div class="stat-label">Esta Semana</div></div>
+    <div class="stat-card"><div class="stat-val purple" id="stat-maint">0</div><div class="stat-label">Manutenções</div></div>
+  </div>
+
+  <div class="section-label">Acesso Rápido</div>
+  <div class="scanner-modes">
+    <div class="mode-btn" onclick="goPage('page-scanner');setScanMode('qr')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h2v2h-2zM18 14h3v2M14 18h2M18 18h3M20 20v2"/></svg>Ler QR Code
+    </div>
+    <div class="mode-btn" onclick="goPage('page-scanner');setScanMode('ai')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a9 9 0 100 18A9 9 0 0012 2z"/><circle cx="12" cy="12" r="3"/><path d="M12 8v1M12 15v1M8 12H7M17 12h-1"/></svg>IA Visual
+    </div>
+    <div class="mode-btn" onclick="goPage('page-catalog')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>Catálogo
+    </div>
+    <div class="mode-btn" onclick="goPage('page-maint')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>Manutenção
+    </div>
+    <div class="mode-btn" onclick="goPage('page-stock')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Almoxarifado
+    </div>
+    <div class="mode-btn" onclick="if(checkAdmin())openAddModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Cadastrar
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:16px">Manutenções Pendentes</div>
+  <div id="home-maint"></div>
+
+  <div class="section-label" style="margin-top:16px">Produtos Recentes</div>
+  <div id="home-recent"></div>
+</div>
+
+<!-- SCANNER -->
+<div class="page" id="page-scanner">
+  <div class="section-label">Modo de Leitura</div>
+  <div class="scanner-modes" style="margin-bottom:12px">
+    <div class="mode-btn active-mode" id="mode-qr-btn" onclick="setScanMode('qr')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="20"/><line x1="14" y1="14" x2="20" y2="14"/><line x1="20" y1="17" x2="20" y2="20"/><line x1="17" y1="20" x2="20" y2="20"/></svg>QR / Código
+    </div>
+    <div class="mode-btn" id="mode-ai-btn" onclick="setScanMode('ai')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a9 9 0 100 18A9 9 0 0012 2z"/><circle cx="12" cy="12" r="3"/><path d="M12 8v1M12 15v1M8 12H7M17 12h-1"/></svg>IA Visual
+    </div>
+  </div>
+
+  <!-- Loading state for scanner -->
+  <div id="scanner-loading" style="text-align:center;padding:20px;color:var(--text2)">
+    <div class="ai-spinner" style="margin:0 auto 10px"></div>
+    <p style="font-size:.75rem">Iniciando câmera...</p>
+  </div>
+
+  <div id="scanner-wrap">
+    <div id="scanner-reader"></div>
+    <div class="scan-overlay">
+      <div class="scan-frame"><div class="c3"></div><div class="c4"></div><div class="scan-line"></div></div>
+    </div>
+  </div>
+
+  <!-- Scanner action buttons -->
+  <div style="display:flex;gap:8px;margin-top:12px">
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.75rem" onclick="toggleFlash()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Flash
+    </button>
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.75rem" onclick="restartScanner()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Reiniciar
+    </button>
+  </div>
+
+  <div class="scan-result" id="scan-result-box">
+    <label>Leitura QR / Código</label>
+    <div class="result-val" id="scan-result-val"></div>
+    <button class="btn btn-primary" style="margin-top:10px" onclick="openProductByCode()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Ver Produto
+    </button>
+  </div>
+
+  <div id="ai-status" style="display:none">
+    <div class="ai-spinner"></div>
+    <p><strong id="ai-status-title">Analisando imagem com IA…</strong><span id="ai-status-desc">Aguarde enquanto identificamos o objeto</span></p>
+  </div>
+
+  <div style="margin-top:12px">
+    <button class="btn btn-secondary" id="capture-btn" onclick="captureAndAnalyze()" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="12" r="4"/><path d="M8.5 3H3v5.5M20.5 3H15v-0M3 15.5V21h5.5M20.5 21H15v0M15 3h5.5v5.5"/></svg>Capturar e Identificar
+    </button>
+  </div>
+</div>
+
+<!-- CATALOG -->
+<div class="page" id="page-catalog">
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" placeholder="Buscar produto, SKU, categoria…" id="search-input" oninput="renderCatalog()">
+    <button class="voice-btn" id="voice-btn" onclick="startVoiceSearch()" title="Busca por voz">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0M8 21h8M12 18v3"/></svg>
+    </button>
+  </div>
+  <div class="sort-row">
+    <span class="sort-chip" data-sort="name" onclick="setSort(this)">Nome</span>
+    <span class="sort-chip active" data-sort="date" onclick="setSort(this)">Data</span>
+    <span class="sort-chip" data-sort="category" onclick="setSort(this)">Categoria</span>
+    <span class="sort-chip" data-sort="fav" onclick="setSort(this)">Favoritos</span>
+  </div>
+  <div class="filter-row" id="filter-row">
+    <div class="filter-chip active" data-cat="todos" onclick="setFilter(this)">Todos</div>
+  </div>
+  <div id="catalog-list"></div>
+</div>
+
+<!-- MANUTENÇÃO -->
+<div class="page" id="page-maint">
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <button class="btn btn-primary" style="flex:1;padding:10px;font-size:.8rem" onclick="openMaintModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Nova Manutenção
+    </button>
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.8rem" onclick="goPage('page-maint-calendar')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Cronograma
+    </button>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <button class="btn btn-primary" style="flex:1;padding:10px;font-size:.8rem;background:linear-gradient(135deg,var(--accent4),var(--accent2))" onclick="goPage('page-os')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>Ordens de Serviço
+    </button>
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.8rem" onclick="goPage('page-os-dash')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Dashboard OS
+    </button>
+  </div>
+
+  <div class="tab-row" id="maint-tabs">
+    <div class="tab active" data-mtab="all" onclick="setMaintTab(this,'all')">Todas</div>
+    <div class="tab" data-mtab="pending" onclick="setMaintTab(this,'pending')">Pendentes</div>
+    <div class="tab" data-mtab="inprogress" onclick="setMaintTab(this,'inprogress')">Em Andamento</div>
+    <div class="tab" data-mtab="done" onclick="setMaintTab(this,'done')">Concluídas</div>
+  </div>
+
+  <div id="maint-list"></div>
+</div>
+
+<!-- MANUTENÇÃO - CRONOGRAMA -->
+<div class="page" id="page-maint-calendar">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <button class="btn btn-secondary" style="flex:0;padding:8px 12px;width:auto" onclick="prevMaintMonth()">‹</button>
+    <div style="flex:1;text-align:center;font-family:var(--font-head);font-weight:700;font-size:.95rem" id="maint-month-label"></div>
+    <button class="btn btn-secondary" style="flex:0;padding:8px 12px;width:auto" onclick="nextMaintMonth()">›</button>
+  </div>
+  <div id="maint-calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:12px"></div>
+  <div class="section-label">Agendamentos do Dia</div>
+  <div id="maint-day-list"></div>
+  <button class="btn btn-secondary" style="margin-top:8px" onclick="goPage('page-maint')">← Voltar</button>
+</div>
+
+<!-- ESTOQUE / ALMOXARIFADO -->
+<div class="page" id="page-stock">
+  <div class="tab-row" id="stock-tabs">
+    <div class="tab active" data-stab="items" onclick="setStockTab(this,'items')">Itens</div>
+    <div class="tab" data-stab="movements" onclick="setStockTab(this,'movements')">Movimentações</div>
+  </div>
+
+  <div id="stock-items">
+    <div class="search-wrap" style="margin-bottom:10px">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Buscar no estoque…" id="stock-search" oninput="renderStock()">
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="btn btn-primary" style="flex:1;padding:10px;font-size:.8rem" onclick="openStockModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo Item
+      </button>
+      <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.8rem" onclick="openMovementModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M12 5v14M5 12l7-7 7 7"/></svg>Entrada/Saída
+      </button>
+      <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.8rem" onclick="goPage('page-purchases')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>Lista de Compras
+      </button>
+    </div>
+    <div id="stock-list"></div>
+  </div>
+
+  <div id="stock-movements" style="display:none">
+    <div id="movement-list"></div>
+  </div>
+</div>
+
+<!-- FORNECEDORES -->
+<div class="page" id="page-suppliers">
+  <button class="btn btn-primary" style="margin-bottom:12px;padding:10px;font-size:.8rem" onclick="openSupplierModal()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo Fornecedor
+  </button>
+  <div class="search-wrap" style="margin-bottom:10px">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" placeholder="Buscar fornecedor…" id="supplier-search" oninput="renderSuppliers()">
+  </div>
+  <div id="supplier-list"></div>
+</div>
+
+<!-- RELATÓRIOS -->
+<div class="page" id="page-reports">
+  <div class="tab-row" id="reports-tabs">
+    <div class="tab active" data-rtab="products" onclick="setReportsTab(this,'products')">Produtos</div>
+    <div class="tab" data-rtab="maint" onclick="setReportsTab(this,'maint')">Manutenção</div>
+    <div class="tab" data-rtab="stock" onclick="setReportsTab(this,'stock')">Estoque</div>
+  </div>
+
+  <div id="reports-products">
+    <div class="chart-wrap"><canvas id="chart-categories"></canvas></div>
+    <div class="chart-wrap"><canvas id="chart-registrations"></canvas></div>
+    <div class="section-label">Produtos por Categoria</div>
+    <div id="report-cat-list"></div>
+  </div>
+
+  <div id="reports-maint" style="display:none">
+    <div class="chart-wrap"><canvas id="chart-maint-status"></canvas></div>
+    <div class="section-label">Manutenções por Equipamento</div>
+    <div id="report-maint-list"></div>
+  </div>
+
+  <div id="reports-stock" style="display:none">
+    <div class="chart-wrap"><canvas id="chart-stock"></canvas></div>
+    <div class="section-label">Alertas de Estoque</div>
+    <div id="report-alert-list"></div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.8rem" onclick="exportData('json')">📥 Exportar JSON</button>
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:.8rem" onclick="exportData('csv')">📥 Exportar CSV</button>
+  </div>
+  <button class="btn btn-secondary" style="margin-top:8px;padding:10px;font-size:.8rem" onclick="document.getElementById('import-file').click()">
+    📤 Importar Produtos (JSON)
+  </button>
+  <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+</div>
+
+<!-- SOBRE -->
+<div class="page" id="page-about">
+  <div style="text-align:center;padding:30px 0">
+    <div class="logo-ring" style="margin:0 auto 16px">
+      <svg viewBox="0 0 36 36" fill="none" stroke="#00F5A0" stroke-width="2">
+        <rect x="4" y="4" width="12" height="12" rx="2"/><rect x="20" y="4" width="12" height="12" rx="2"/>
+        <rect x="4" y="20" width="12" height="12" rx="2"/><circle cx="26" cy="26" r="5"/>
+      </svg>
+    </div>
+    <h1 style="font-family:var(--font-head);font-size:1.6rem;font-weight:800">R2C-<span style="color:var(--accent)">Scan</span></h1>
+    <p style="color:var(--text2);font-size:.8rem;margin:8px 0">Versão 2.0 — Gestão Inteligente</p>
+    <p style="color:var(--text2);font-size:.7rem;max-width:300px;margin:0 auto;line-height:1.6">
+      Sistema completo de gestão de produtos, manutenção, estoque e fornecedores.
+      QR Code, reconhecimento por IA, relatórios e muito mais.
+    </p>
+    <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--card);border-radius:12px;padding:16px;border:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem"><span style="color:var(--text2)">Produtos</span><span id="about-prod">0</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:.75rem"><span style="color:var(--text2)">Manutenções</span><span id="about-maint">0</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:.75rem"><span style="color:var(--text2)">Itens em Estoque</span><span id="about-stock">0</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:.75rem"><span style="color:var(--text2)">Fornecedores</span><span id="about-supp">0</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:.75rem"><span style="color:var(--text2)">Escaneamentos</span><span id="about-scans">0</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="page" id="page-admin">
+  <div id="admin-badge">⚙ Área do Administrador</div>
+  <div class="section-label">Produtos Cadastrados</div>
+  <div id="admin-list"></div>
+  <button class="btn btn-primary" style="margin-top:6px" onclick="openAddModal()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo Produto
+  </button>
+</div>
+
+<!-- BOTTOM NAV -->
+<!-- ═══════ ORDENS DE SERVIÇO (LISTA) ═══════ -->
+<div class="page" id="page-os">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="goPage('page-maint')">←</button>
+    <div class="section-label" style="margin:0;flex:1">Ordens de Serviço</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <button class="btn btn-primary" style="flex:1;padding:10px;font-size:.78rem" onclick="openOSModal()">+ Nova OS</button>
+    <button class="btn btn-secondary" style="padding:10px 12px;font-size:.78rem" onclick="exportOS('csv')">CSV</button>
+    <button class="btn btn-secondary" style="padding:10px 12px;font-size:.78rem" onclick="exportOS('pdf')">PDF</button>
+  </div>
+  <div class="search-wrap" style="margin-bottom:10px">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" placeholder="Buscar OS, equipamento, setor…" id="os-search" oninput="renderOS()">
+  </div>
+  <div class="tab-row" id="os-tabs" style="flex-wrap:wrap">
+    <div class="tab active" data-otab="all" onclick="setOSTab(this,'all')">Todas</div>
+    <div class="tab" data-otab="aberta" onclick="setOSTab(this,'aberta')">Abertas</div>
+    <div class="tab" data-otab="analise" onclick="setOSTab(this,'analise')">Análise</div>
+    <div class="tab" data-otab="aguardando_material" onclick="setOSTab(this,'aguardando_material')">Ag. Material</div>
+    <div class="tab" data-otab="execucao" onclick="setOSTab(this,'execucao')">Execução</div>
+    <div class="tab" data-otab="aguardando_aprovacao" onclick="setOSTab(this,'aguardando_aprovacao')">Ag. Aprovação</div>
+    <div class="tab" data-otab="concluida" onclick="setOSTab(this,'concluida')">Concluídas</div>
+    <div class="tab" data-otab="cancelada" onclick="setOSTab(this,'cancelada')">Canceladas</div>
+  </div>
+  <div id="os-list"></div>
+</div>
+
+<!-- ═══════ DASHBOARD DE MANUTENÇÃO ═══════ -->
+<div class="page" id="page-os-dash">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="goPage('page-maint')">←</button>
+    <div class="section-label" style="margin:0;flex:1">Dashboard de Manutenção</div>
+  </div>
+  <div class="stats-grid" id="os-kpis" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
+  <div class="section-label">Custos por Mês</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-costs" height="160"></canvas></div>
+  <div class="section-label">Falhas por Tipo</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-type" height="160"></canvas></div>
+  <div class="section-label">Falhas por Setor</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-sector" height="160"></canvas></div>
+  <div class="section-label">Custo por Equipamento</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-equip" height="160"></canvas></div>
+  <div class="section-label">Consumo de Materiais</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px"><canvas id="os-chart-mat" height="160"></canvas></div>
+</div>
+
+<!-- ═══════ LISTA DE COMPRAS ═══════ -->
+<div class="page" id="page-purchases">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="goPage('page-stock')">←</button>
+    <div class="section-label" style="margin:0;flex:1">Lista de Compras</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <button class="btn btn-primary" style="flex:1;padding:10px;font-size:.78rem" onclick="generatePurchaseList()">⟳ Gerar automático</button>
+    <button class="btn btn-secondary" style="padding:10px 12px;font-size:.78rem" onclick="exportPurchases('csv')">CSV</button>
+    <button class="btn btn-secondary" style="padding:10px 12px;font-size:.78rem" onclick="exportPurchases('pdf')">PDF</button>
+  </div>
+  <div id="purchase-list"></div>
+</div>
+
+<!-- ═══════ DETALHE DA OS (tela cheia) ═══════ -->
+<div id="os-detail-page">
+  <div class="os-detail-topbar">
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="closeOSDetail()">←</button>
+    <div id="os-detail-number" style="flex:1;font-family:var(--font-head);font-weight:700"></div>
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="printOS(currentOSId)" title="Imprimir/PDF">🖨️</button>
+  </div>
+  <div class="os-detail-tabs tab-row" id="os-detail-tabs">
+    <div class="tab active" data-dtab="info" onclick="setOSDetailTab(this,'info')">Info</div>
+    <div class="tab" data-dtab="timeline" onclick="setOSDetailTab(this,'timeline')">Andamento</div>
+    <div class="tab" data-dtab="photos" onclick="setOSDetailTab(this,'photos')">Fotos</div>
+    <div class="tab" data-dtab="materials" onclick="setOSDetailTab(this,'materials')">Materiais</div>
+    <div class="tab" data-dtab="costs" onclick="setOSDetailTab(this,'costs')">Custos</div>
+  </div>
+  <div class="os-detail-body">
+    <div id="os-dtab-info" class="os-dtab"></div>
+    <div id="os-dtab-timeline" class="os-dtab" style="display:none"></div>
+    <div id="os-dtab-photos" class="os-dtab" style="display:none"></div>
+    <div id="os-dtab-materials" class="os-dtab" style="display:none"></div>
+    <div id="os-dtab-costs" class="os-dtab" style="display:none"></div>
+  </div>
+</div>
+
+<!-- MODAL NOVA/EDITAR OS -->
+<div class="modal-overlay" id="modal-os">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-os-title">📋 Nova Ordem de Serviço</div>
+    <input type="hidden" id="os-edit-id">
+    <div class="form-row">
+      <div class="form-group"><label>Tipo</label>
+        <select id="os-type"><option value="corretiva">Corretiva</option><option value="preventiva">Preventiva</option><option value="preditiva">Preditiva</option><option value="inspecao">Inspeção</option></select>
+      </div>
+      <div class="form-group"><label>Prioridade</label>
+        <select id="os-priority"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option><option value="critica">Crítica</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Equipamento / Ativo</label>
+      <select id="os-asset"><option value="">— Selecionar ativo cadastrado —</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Patrimônio</label><input type="text" id="os-patrimony" placeholder="Nº patrimônio"></div>
+      <div class="form-group"><label>Setor</label><input type="text" id="os-sector" placeholder="Ex: Produção"></div>
+    </div>
+    <div class="form-group"><label>Localização</label><input type="text" id="os-location" placeholder="Ex: Galpão 2 - Linha A"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Solicitante</label><input type="text" id="os-requester" placeholder="Nome"></div>
+      <div class="form-group"><label>Responsável Técnico</label><input type="text" id="os-tech" placeholder="Nome"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Data Prevista</label><input type="date" id="os-due"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="os-status">
+          <option value="aberta">Aberta</option><option value="analise">Em análise</option>
+          <option value="aguardando_material">Aguardando material</option><option value="execucao">Em execução</option>
+          <option value="aguardando_aprovacao">Aguardando aprovação</option><option value="concluida">Concluída</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Descrição da Falha</label><textarea id="os-failure" placeholder="Descreva a falha relatada…"></textarea></div>
+    <div class="form-group"><label>Diagnóstico</label><textarea id="os-diagnosis" placeholder="Diagnóstico técnico…"></textarea></div>
+    <div class="form-group"><label>Causa Raiz</label><textarea id="os-rootcause" placeholder="Causa raiz identificada…"></textarea></div>
+    <div class="form-group"><label>Solução Aplicada</label><textarea id="os-solution" placeholder="Solução executada…"></textarea></div>
+    <div class="form-group"><label>Observações</label><textarea id="os-notes" placeholder="Observações gerais…"></textarea></div>
+    <div class="section-label" style="margin-top:2px">Custos (R$)</div>
+    <div class="form-row">
+      <div class="form-group"><label>Mão de obra</label><input type="number" step="0.01" id="os-labor" value="0"></div>
+      <div class="form-group"><label>Terceiros</label><input type="number" step="0.01" id="os-thirdparty" value="0"></div>
+    </div>
+    <div class="form-group"><label>Custos adicionais</label><input type="number" step="0.01" id="os-additional" value="0"></div>
+    <button class="btn btn-primary" onclick="saveOS()">Salvar Ordem de Serviço</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeOSModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL MATERIAL DA OS -->
+<div class="modal-overlay" id="modal-os-material">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🧰 Adicionar Material</div>
+    <input type="hidden" id="osmat-edit-id">
+    <div class="form-group"><label>Item do estoque (opcional — dá baixa automática)</label>
+      <select id="osmat-stock" onchange="onOSMatStockChange()"><option value="">— Material avulso —</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Código</label><input type="text" id="osmat-code"></div>
+      <div class="form-group"><label>Categoria</label><input type="text" id="osmat-cat"></div>
+    </div>
+    <div class="form-group"><label>Nome *</label><input type="text" id="osmat-name"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Quantidade</label><input type="number" step="0.001" id="osmat-qty" value="1"></div>
+      <div class="form-group"><label>Unidade</label><input type="text" id="osmat-unit" value="un"></div>
+    </div>
+    <div class="form-group"><label>Valor unitário (R$)</label><input type="number" step="0.01" id="osmat-price" value="0"></div>
+    <button class="btn btn-primary" onclick="saveOSMaterial()">Adicionar</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeOSMaterialModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL FOTO/ANEXO DA OS -->
+<div class="modal-overlay" id="modal-os-photo">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📷 Anexar Mídia</div>
+    <div class="form-group"><label>Fase / Tipo</label>
+      <select id="osphoto-phase">
+        <option value="antes">Foto — Antes</option><option value="durante">Foto — Durante</option>
+        <option value="depois">Foto — Depois</option><option value="video">Vídeo</option>
+        <option value="documento">PDF / Documento</option><option value="manual">Manual</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Arquivo</label>
+      <input type="file" id="osphoto-file" accept="image/*,video/*,application/pdf" onchange="onOSPhotoFile(this)">
+    </div>
+    <div id="osphoto-preview" style="margin-bottom:10px"></div>
+    <div class="form-group"><label>Legenda</label><input type="text" id="osphoto-caption" placeholder="Descrição (opcional)"></div>
+    <button class="btn btn-primary" onclick="saveOSPhoto()">Anexar</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeOSPhotoModal()">Cancelar</button>
+  </div>
+</div>
+
+<nav id="bottomnav">
+  <div class="nav-item active" id="nav-home" onclick="goPage('page-home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><path stroke="currentColor" d="M3 12L12 3l9 9"/><path stroke="currentColor" d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg><span>Início</span>
+  </div>
+  <div class="nav-item" id="nav-scanner" onclick="goPage('page-scanner')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/></svg><span>Scanner</span>
+  </div>
+  <div class="nav-item" id="nav-catalog" onclick="goPage('page-catalog')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg><span>Catálogo</span>
+  </div>
+  <div class="nav-item" id="nav-maint" onclick="goPage('page-maint')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg><span>Manutenção</span>
+  </div>
+  <div class="nav-item" id="nav-stock" onclick="goPage('page-stock')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg><span>Estoque</span>
+  </div>
+  <div class="nav-item" id="nav-suppliers" onclick="goPage('page-suppliers')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span>Forneced.</span>
+  </div>
+  <div class="nav-item" id="nav-reports" onclick="goPage('page-reports')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Relatórios</span>
+  </div>
+  <div class="nav-item" id="nav-about" onclick="goPage('page-about')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Sobre</span>
+  </div>
+</nav>
+
+<!-- DETAIL PAGE -->
+<div id="detail-page">
+  <div class="detail-hero" id="detail-hero">
+    <img id="detail-img" src="" alt="">
+    <div class="detail-hero-overlay"></div>
+    <div class="detail-back" onclick="closeDetail()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:16px;height:16px"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </div>
+  </div>
+  <div class="detail-body">
+    <div id="detail-ai-badge" class="ai-rec-badge" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a9 9 0 100 18A9 9 0 0012 2z"/><circle cx="12" cy="12" r="3"/></svg>Identificado por IA
+    </div>
+    <div id="detail-category" class="detail-category"></div>
+    <div id="detail-title" class="detail-title"></div>
+    <div id="detail-sku" class="detail-sku"></div>
+    <div id="detail-desc" style="font-size:.8rem;color:var(--text2);line-height:1.6;margin-bottom:6px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn btn-secondary" style="flex:1;padding:8px;font-size:.7rem" onclick="toggleFav(currentDetailId)">⭐ Favoritar</button>
+      <button class="btn btn-secondary" style="flex:1;padding:8px;font-size:.7rem" onclick="duplicateProduct()">📋 Duplicar</button>
+    </div>
+    <div class="spec-grid" id="detail-specs"></div>
+    <div class="tech-specs-area" id="detail-tech-table"></div>
+    <div class="qr-section" id="detail-qr-section">
+      <div id="detail-qr-canvas"></div>
+      <strong id="detail-qr-label"></strong>
+      <p>Escaneie para acessar os dados</p>
+    </div>
+    <div style="display:grid;gap:8px;margin-top:12px">
+      <button class="btn btn-secondary" onclick="shareProduct()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Compartilhar QR Code
+      </button>
+      <button class="btn btn-danger" id="delete-btn" onclick="deleteCurrentProduct()">Excluir Produto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADD/EDIT PRODUTO -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">📦 Novo Produto</div>
+    <div class="form-group">
+      <label>Foto do Produto</label>
+      <div class="photo-upload" id="photo-upload-area" onclick="document.getElementById('photo-file').click()">
+        <img id="photo-preview" src="" style="display:none">
+        <div class="upload-label" id="upload-label-inner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          Toque para adicionar foto
+        </div>
+      </div>
+      <input type="file" id="photo-file" accept="image/*" capture="environment" style="display:none" onchange="previewPhoto(this)">
+    </div>
+    <div class="form-group"><label>Nome do Produto *</label><input type="text" id="f-name" placeholder="Ex: Parafuso Sextavado M8"></div>
+    <div class="form-row">
+      <div class="form-group"><label>SKU</label><input type="text" id="f-sku" placeholder="Ex: SKU-001"></div>
+      <div class="form-group"><label>Categoria</label><input type="text" id="f-cat" placeholder="Ex: Fixadores"></div>
+    </div>
+    <div class="form-group"><label>Descrição</label><textarea id="f-desc" placeholder="Descreva o produto…"></textarea></div>
+    <div class="section-label" style="margin-top:2px">Especificações Técnicas</div>
+    <div id="specs-fields">
+      <div class="spec-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <input class="spec-key-input" type="text" placeholder="Campo (ex: Peso)" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:var(--font-mono);font-size:.75rem;outline:none">
+        <input class="spec-val-input" type="text" placeholder="Valor (ex: 12g)" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:var(--font-mono);font-size:.75rem;outline:none">
+      </div>
+    </div>
+    <button class="btn btn-secondary" style="margin-bottom:12px;font-size:.75rem;padding:8px" onclick="addSpecField()">+ Adicionar Especificação</button>
+    <button class="btn btn-primary" onclick="saveProduct()" id="save-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Salvar e Gerar QR Code
+    </button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeAddModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL MANUTENÇÃO -->
+<div class="modal-overlay" id="modal-maint">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-maint-title">🔧 Nova Manutenção</div>
+    <input type="hidden" id="maint-edit-id">
+    <div class="form-group"><label>Equipamento / Máquina *</label><input type="text" id="m-name" placeholder="Ex: Prensa Hidráulica"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Tipo</label>
+        <select id="m-type"><option>Preventiva</option><option>Corretiva</option><option>Preditiva</option><option>Inspeção</option></select>
+      </div>
+      <div class="form-group"><label>Prioridade</label>
+        <select id="m-priority"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option><option value="critica">Crítica</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Data Agendada</label><input type="date" id="m-date"></div>
+      <div class="form-group"><label>Hora</label><input type="time" id="m-time" value="08:00"></div>
+    </div>
+    <div class="form-group"><label>Descrição do Serviço</label><textarea id="m-desc" placeholder="Descreva o serviço a ser realizado…"></textarea></div>
+    <div class="form-group"><label>Técnico Responsável</label><input type="text" id="m-tech" placeholder="Nome do técnico"></div>
+    <div class="form-group"><label>Recorrência</label>
+      <select id="m-recurrence">
+        <option value="none">Não repetir</option>
+        <option value="daily">Diariamente</option>
+        <option value="weekly">Semanalmente</option>
+        <option value="monthly">Mensalmente</option>
+        <option value="quarterly">Trimestralmente</option>
+        <option value="yearly">Anualmente</option>
+      </select>
+    </div>
+    <div class="section-label" style="margin-top:2px">Checklist</div>
+    <div id="maint-checklist">
+      <div class="maint-check-item" style="display:flex;gap:8px;margin-bottom:6px;align-items:center">
+        <input type="text" placeholder="Item do checklist" class="m-check-input" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:var(--font-mono);font-size:.75rem;outline:none">
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--danger);font-size:1.2rem;cursor:pointer">×</button>
+      </div>
+    </div>
+    <button class="btn btn-secondary" style="font-size:.75rem;padding:8px;margin-bottom:12px" onclick="addCheckItem()">+ Item Checklist</button>
+    <button class="btn btn-primary" onclick="saveMaint()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Salvar Manutenção
+    </button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeMaintModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL ESTOQUE -->
+<div class="modal-overlay" id="modal-stock">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-stock-title">📦 Novo Item de Estoque</div>
+    <input type="hidden" id="stock-edit-id">
+    <div class="form-group"><label>Nome do Item *</label><input type="text" id="s-name" placeholder="Ex: Parafuso M8 x 40mm"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Quantidade</label><input type="number" id="s-qty" value="0" min="0"></div>
+      <div class="form-group"><label>Estoque Mínimo</label><input type="number" id="s-min" value="10" min="0"></div>
+    </div>
+    <div class="form-group"><label>Unidade</label>
+      <select id="s-unit"><option>un</option><option>kg</option><option>m</option><option>L</option><option>cx</option><option>pc</option></select>
+    </div>
+    <div class="form-group"><label>Localização</label><input type="text" id="s-local" placeholder="Ex: Prateleira A3"></div>
+    <div class="form-group"><label>Observações</label><textarea id="s-obs" placeholder="Observações…"></textarea></div>
+    <button class="btn btn-primary" onclick="saveStockItem()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Salvar Item
+    </button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeStockModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL MOVIMENTAÇÃO -->
+<div class="modal-overlay" id="modal-movement">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔄 Movimentação de Estoque</div>
+    <div class="form-group"><label>Item</label>
+      <select id="mov-item" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--font-mono);font-size:.8rem;outline:none;width:100%"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tipo</label>
+        <select id="mov-type" onchange="toggleMovementFields()"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
+      </div>
+      <div class="form-group"><label>Quantidade</label><input type="number" id="mov-qty" value="1" min="1"></div>
+    </div>
+    <div id="mov-quem-pegou-field" class="form-group">
+      <label>Quem Retirou</label>
+      <input type="text" id="mov-responsavel" placeholder="Nome de quem pegou o material">
+    </div>
+    <div id="mov-quem-devolveu-field" class="form-group" style="display:none">
+      <label>Quem Devolveu</label>
+      <input type="text" id="mov-devolveu" placeholder="Nome de quem devolveu">
+    </div>
+    <div class="form-group"><label>Motivo / Observação</label><input type="text" id="mov-reason" placeholder="Ex: Reposição de estoque"></div>
+    <button class="btn btn-primary" onclick="saveMovement()">Registrar Movimentação</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeMovementModal()">Cancelar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-supplier">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-supplier-title">🏭 Novo Fornecedor</div>
+    <input type="hidden" id="supp-edit-id">
+    <div class="form-group"><label>Razão Social *</label><input type="text" id="sup-name" placeholder="Ex: Aços Especiais Ltda"></div>
+    <div class="form-group"><label>Nome Fantasia</label><input type="text" id="sup-trade" placeholder="Ex: Aços Brasil"></div>
+    <div class="form-row">
+      <div class="form-group"><label>CNPJ</label><input type="text" id="sup-cnpj" placeholder="00.000.000/0001-00"></div>
+      <div class="form-group"><label>Inscrição Estadual</label><input type="text" id="sup-ie" placeholder="IE"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Contato</label><input type="text" id="sup-contact" placeholder="Nome do contato"></div>
+      <div class="form-group"><label>Responsável</label><input type="text" id="sup-resp" placeholder="Responsável"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Telefone</label><input type="text" id="sup-phone" placeholder="(11) 99999-9999"></div>
+      <div class="form-group"><label>WhatsApp</label><input type="text" id="sup-whats" placeholder="(11) 99999-9999"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="sup-email" placeholder="contato@empresa.com"></div>
+    <div class="form-group"><label>Endereço</label><textarea id="sup-addr" placeholder="Rua, número, bairro, cidade, estado, CEP"></textarea></div>
+    <div class="form-group"><label>Categoria</label>
+      <input type="text" id="sup-cat" list="sup-cat-list" placeholder="Elétrica, Mecânica, Hidráulica…">
+      <datalist id="sup-cat-list">
+        <option value="Elétrica"><option value="Mecânica"><option value="Hidráulica"><option value="Pneumática">
+        <option value="Instrumentação"><option value="Estrutural"><option value="Automação"><option value="Outros">
+      </datalist>
+    </div>
+    <div class="form-group"><label>Observações</label><textarea id="sup-obs" placeholder="Observações sobre o fornecedor…"></textarea></div>
+    <button class="btn btn-primary" onclick="saveSupplier()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Salvar Fornecedor
+    </button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeSupplierModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL LOGIN (Firebase - Email/Password) -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h2 style="font-family:var(--font-head);font-size:1.1rem;margin-bottom:6px">🔐 Login</h2>
+    <p style="font-size:.75rem;color:var(--text2);margin-bottom:14px">Faça login com seu email e senha</p>
+    
+    <!-- Login Error -->
+    <div id="login-error" style="display:none;background:rgba(255,68,102,.1);border:1px solid var(--danger);border-radius:8px;padding:10px;margin-bottom:12px;font-size:.72rem;color:var(--danger)"></div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email-input" placeholder="seu@email.com" autocomplete="email" onkeypress="if(event.key==='Enter')document.getElementById('login-pw-input').focus()">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="login-pw-input" placeholder="••••••••" autocomplete="current-password" onkeypress="if(event.key==='Enter')handleLogin()">
+    </div>
+
+    <!-- Loading state -->
+    <div id="login-loading" style="display:none;text-align:center;padding:10px">
+      <div class="ai-spinner" style="margin:0 auto 8px"></div>
+      <p style="font-size:.7rem;color:var(--text2)">Autenticando...</p>
+    </div>
+
+    <button class="btn btn-primary" id="login-btn" onclick="handleLogin()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg> Entrar
+    </button>
+
+    <!-- User info when logged in -->
+    <div id="login-user-info" style="display:none;text-align:center;padding:10px 0">
+      <p style="font-size:.8rem;color:var(--accent);margin-bottom:6px">✓ Conectado</p>
+      <p id="login-user-email" style="font-size:.7rem;color:var(--text2)"></p>
+      <button class="btn btn-secondary" style="margin-top:10px;padding:8px;font-size:.75rem" onclick="handleLogout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg> Sair
+      </button>
+    </div>
+
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeLoginModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script src="/env.js"></script>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     MÓDULO DE MANUTENÇÃO INDUSTRIAL — ORDENS DE SERVIÇO
+     Aditivo, offline-first (IndexedDB), integrado a estoque/fornecedores.
+     v2.1
+═════════════════════════════════════════════════════════════════════ -->
+
+<script type="module" src="/src/js/main.js"></script>
+</body>
+</html>
