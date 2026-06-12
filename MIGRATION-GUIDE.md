@@ -46,9 +46,13 @@ Migrar nesta ordem. NÃO pular etapas.
 - [x] **0. Utilitários** → `src/js/utils/format.js` ✅ 2026-06-12
       (money, dt, dOnly, esc/escapeHTML, q, show — funções puras pequenas;
        corrigiu de quebra o escapeHTML defeituoso do app.js)
-- [ ] **1. Produtos** → `src/js/modules/products.js`
-      (openAddModal, saveProduct, editProduct, deleteCurrentProduct,
-       duplicateProduct, openDetailById, renderCatalog, setFilter, setSort)
+- [x] **1. Produtos** → `src/js/modules/products.js` ✅ 2026-06-12
+      (openProductByQR, openProductByCode, renderCatalog, setFilter, setSort,
+       productCardHTML, openDetailById, openDetail, closeDetail,
+       deleteCurrentProduct, shareProduct, toggleFav, duplicateProduct,
+       openAddModal, editProduct, closeAddModal, saveProduct, previewPhoto,
+       addSpecField, resetSpecFields — hooks p/ renderHome/renderAdmin/scanner
+       via registerProductHooks; state exportado do app.js)
 - [ ] **2. Estoque** → `src/js/modules/stock.js`
       (openStockModal, saveStockItem, openMovementModal, saveMovement,
        setStockTab, toggleMovementFields)

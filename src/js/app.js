@@ -7,11 +7,18 @@ import toast from './utils/toast.js';
 import api from './utils/api.js';
 import { escapeHTML } from './utils/format.js';
 import { startScanner, stopScanner, toggleCamera, requestCameraPermission } from './scanner.js';
+import {
+  registerProductHooks, openProductByQR, openProductByCode,
+  renderCatalog, setFilter, setSort, productCardHTML,
+  openDetailById, openDetail, closeDetail, deleteCurrentProduct,
+  shareProduct, toggleFav, duplicateProduct, openAddModal,
+  editProduct, closeAddModal, saveProduct, previewPhoto, addSpecField
+} from './modules/products.js';
 
 // ═══════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════
-const state = {
+export const state = {
   currentPage: 'page-home',
   scanMode: 'qr',
   currentFilter: 'todos',
@@ -106,7 +113,7 @@ function handleScanResult(data) {
   document.getElementById('scan-result-box').classList.add('show');
   toast('Leitura realizada!', 'success');
   recordScan(data);
-  openProductByCode(data);
+  openProductByQR(data);
 }
 
 async function recordScan(data) {
@@ -142,109 +149,27 @@ window.restartScanner = function() {
 };
 
 // ═══════════════════════════════════════════
-// PRODUCT LOOKUP
+// PRODUTOS — módulo migrado (modules/products.js)
+// Bindings para os handlers inline (onclick=) do HTML
 // ═══════════════════════════════════════════
-async function openProductByCode(code) {
-  const all = await getAll(STORES.PRODUCTS);
-  const prod = all.find(p => p.qrData === code || p.sku === code || p.id === code);
-  if (prod) {
-    openDetail(prod, false);
-  } else {
-    toast('Produto não encontrado', 'warning');
-  }
-}
+window.openProductByCode = openProductByCode;
+window.setFilter = setFilter;
+window.setSort = setSort;
+window.openDetailById = openDetailById;
+window.closeDetail = closeDetail;
+window.deleteCurrentProduct = deleteCurrentProduct;
+window.shareProduct = shareProduct;
+window.toggleFav = toggleFav;
+window.duplicateProduct = duplicateProduct;
+window.openAddModal = openAddModal;
+window.editProduct = editProduct;
+window.closeAddModal = closeAddModal;
+window.saveProduct = saveProduct;
+window.previewPhoto = previewPhoto;
+window.addSpecField = addSpecField;
 
-window.openProductByCode = function() {
-  const val = document.getElementById('scan-result-val').textContent;
-  openProductByCode(val);
-};
-
-// ═══════════════════════════════════════════
-// CATALOG
-// ═══════════════════════════════════════════
-async function renderCatalog() {
-  const query = (document.getElementById('search-input')?.value || '').toLowerCase();
-  let all = await getAll(STORES.PRODUCTS);
-
-  // Sort
-  all.sort((a, b) => {
-    if (state.currentSort === 'name') return a.name.localeCompare(b.name);
-    if (state.currentSort === 'category') return (a.category || '').localeCompare(b.category || '');
-    if (state.currentSort === 'fav') return (b.fav ? 1 : 0) - (a.fav ? 1 : 0);
-    return b.createdAt - a.createdAt;
-  });
-
-  // Filter by category
-  const filtered = all.filter(p => {
-    const matchCat = state.currentFilter === 'todos' || (p.category || '').toLowerCase() === state.currentFilter.toLowerCase();
-    const matchQ = !query || p.name.toLowerCase().includes(query) || (p.sku || '').toLowerCase().includes(query) || (p.category || '').toLowerCase().includes(query);
-    return matchCat && matchQ;
-  });
-
-  // Filter chips
-  const cats = [...new Set(all.map(p => p.category).filter(Boolean))];
-  const filterRow = document.getElementById('filter-row');
-  if (filterRow) {
-    filterRow.innerHTML = '<div class="filter-chip active" data-cat="todos" onclick="window.setFilter(this)">Todos</div>';
-    cats.forEach(c => {
-      const chip = document.createElement('div');
-      chip.className = 'filter-chip' + (c === state.currentFilter ? ' active' : '');
-      chip.dataset.cat = c;
-      chip.textContent = c;
-      chip.onclick = () => window.setFilter(chip);
-      filterRow.appendChild(chip);
-    });
-    const chipAll = filterRow.querySelector('[data-cat="todos"]');
-    if (state.currentFilter !== 'todos' && chipAll) chipAll.classList.remove('active');
-  }
-
-  const list = document.getElementById('catalog-list');
-  if (!list) return;
-
-  if (filtered.length === 0) {
-    list.innerHTML = getEmptyState('produtos');
-    return;
-  }
-  list.innerHTML = filtered.map(p => productCardHTML(p)).join('');
-}
-
-window.setFilter = function(el) {
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  state.currentFilter = el.dataset.cat;
-  renderCatalog();
-};
-
-window.setSort = function(el) {
-  document.querySelectorAll('.sort-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  state.currentSort = el.dataset.sort;
-  renderCatalog();
-};
-
-function productCardHTML(p) {
-  const isFav = p.fav ? 'active' : '';
-  const imgContent = p.photo
-    ? `<img src="${p.photo}" alt="${p.name}" loading="lazy">`
-    : `<div class="no-img"><svg viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5" style="width:28px;height:28px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span>Sem imagem</span></div>`;
-  return `<div class="product-card">
-    <div class="card-img" onclick="window.openDetailById('${p.id}')">${imgContent}</div>
-    <div class="card-body">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="card-tag">${p.category || 'Geral'}</div>
-        <button class="fav-btn ${isFav}" onclick="event.stopPropagation();window.toggleFav('${p.id}')">
-          <svg viewBox="0 0 24 24" fill="${p.fav ? '#FF6B35' : 'none'}" stroke="${p.fav ? '#FF6B35' : '#888'}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </button>
-      </div>
-      <div class="card-name" onclick="window.openDetailById('${p.id}')">${escapeHTML(p.name)}</div>
-      <div class="card-sku">${p.sku || 'SKU não definido'}</div>
-      <div class="card-footer" onclick="window.openDetailById('${p.id}')">
-        <div class="status">Cadastrado</div>
-        <div style="font-size:.62rem;color:var(--text2)">${new Date(p.createdAt).toLocaleDateString('pt-BR')}</div>
-      </div>
-    </div>
-  </div>`;
-}
+// Ganchos: funções que vivem no app.js até seus módulos serem migrados
+registerProductHooks({ renderHome, renderAdmin, resumeScanner: setupScannerPage });
 
 // ═══════════════════════════════════════════
 // VOICE SEARCH
@@ -337,240 +262,11 @@ async function renderAdmin() {
     : `<div class="empty-state"><p>Nenhum produto cadastrado</p></div>`;
 }
 
-// ═══════════════════════════════════════════
-// DETAIL
-// ═══════════════════════════════════════════
-window.openDetailById = async function(id) {
-  const prod = await getById(STORES.PRODUCTS, id);
-  if (prod) openDetail(prod, false);
-};
-
-function openDetail(prod, byAI) {
-  state.currentDetailId = prod.id;
-  setEl('detail-img', img => { img.src = prod.photo || ''; img.style.display = prod.photo ? 'block' : 'none'; });
-  setEl('detail-category', el => el.textContent = prod.category || 'Geral');
-  setEl('detail-title', el => el.textContent = prod.name);
-  setEl('detail-sku', el => el.textContent = prod.sku ? `SKU: ${prod.sku}` : '');
-  setEl('detail-desc', el => el.textContent = prod.description || '');
-  setEl('detail-ai-badge', el => el.style.display = byAI ? 'inline-flex' : 'none');
-
-  // Specs
-  const specsHTML = [];
-  if (prod.specs) {
-    Object.entries(prod.specs).forEach(([k, v]) => {
-      specsHTML.push(`<div class="spec-item"><div class="spec-key">${k}</div><div class="spec-val">${v}</div></div>`);
-    });
-  }
-  setEl('detail-specs', el => el.innerHTML = specsHTML.join(''));
-
-  // Tech specs
-  const techRows = prod.techSpecs || [];
-  const techTable = document.getElementById('detail-tech-table');
-  if (techTable) {
-    if (techRows.length > 0) {
-      techTable.innerHTML = techRows.map(r => `<div class="tech-spec-row"><span class="tsk">${r.key}</span><span class="tsv">${r.val}</span></div>`).join('');
-      techTable.style.display = 'block';
-    } else {
-      techTable.style.display = 'none';
-    }
-  }
-
-  // QR Code
-  const qrWrap = document.getElementById('detail-qr-canvas');
-  if (qrWrap && typeof QRCode !== 'undefined') {
-    qrWrap.innerHTML = '';
-    const qrData = prod.qrData || prod.id;
-    new QRCode(qrWrap, { text: qrData, width: 160, height: 160, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.H });
-    setEl('detail-qr-label', el => el.textContent = prod.sku || prod.id);
-  }
-
-  document.getElementById('detail-page')?.classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-window.closeDetail = function() {
-  document.getElementById('detail-page')?.classList.remove('open');
-  document.body.style.overflow = '';
-  state.currentDetailId = null;
-  if (state.currentPage === 'page-scanner' && state.scanMode === 'qr') {
-    setupScannerPage();
-  }
-};
-
-window.deleteCurrentProduct = async function() {
-  if (!state.currentDetailId) return;
-  if (!confirm('Excluir este produto?')) return;
-  await remove(STORES.PRODUCTS, state.currentDetailId);
-  window.closeDetail();
-  toast('Produto excluído', 'success');
-  renderHome();
-};
-
-window.shareProduct = function() {
-  if (navigator.share) {
-    navigator.share({ title: 'R2C-Scan', text: 'Dados do produto', url: window.location.href });
-  } else {
-    toast('Compartilhamento não disponível', 'warning');
-  }
-};
-
-window.toggleFav = async function(id) {
-  const prod = await getById(STORES.PRODUCTS, id);
-  if (!prod) return;
-  prod.fav = !prod.fav;
-  await save(STORES.PRODUCTS, prod);
-  renderCatalog();
-  if (state.currentPage === 'page-home') renderHome();
-  toast(prod.fav ? '⭐ Adicionado aos favoritos' : 'Removido dos favoritos');
-};
-
-window.duplicateProduct = async function() {
-  if (!state.currentDetailId) return;
-  const prod = await getById(STORES.PRODUCTS, state.currentDetailId);
-  if (!prod) return;
-  const newProd = {
-    ...prod,
-    id: `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-    name: prod.name + ' (cópia)',
-    sku: prod.sku ? prod.sku + '-COPY' : '',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    qrData: `R2CSCAN:${Date.now()}`
-  };
-  await save(STORES.PRODUCTS, newProd);
-  toast('Produto duplicado!', 'success');
-  renderHome();
-  window.closeDetail();
-};
-
-// ═══════════════════════════════════════════
-// ADD / EDIT PRODUCT
-// ═══════════════════════════════════════════
-window.openAddModal = function() {
-  state.editingId = null;
-  state.photoDataURL = null;
-  document.getElementById('modal-title').textContent = '📦 Novo Produto';
-  resetForm();
-  document.getElementById('modal-add')?.classList.add('open');
-};
-
-window.editProduct = async function(id) {
-  const prod = await getById(STORES.PRODUCTS, id);
-  if (!prod) return;
-  state.editingId = id;
-  state.photoDataURL = prod.photo || null;
-  document.getElementById('modal-title').textContent = '✏️ Editar Produto';
-  setVal('f-name', prod.name);
-  setVal('f-sku', prod.sku);
-  setVal('f-cat', prod.category);
-  setVal('f-desc', prod.description);
-  if (prod.photo) {
-    const preview = document.getElementById('photo-preview');
-    if (preview) { preview.src = prod.photo; preview.style.display = 'block'; }
-    const label = document.getElementById('upload-label-inner');
-    if (label) label.style.display = 'none';
-  }
-  resetSpecFields();
-  if (prod.techSpecs && prod.techSpecs.length > 0) {
-    const container = document.getElementById('specs-fields');
-    if (container) {
-      container.innerHTML = '';
-      prod.techSpecs.forEach(({ key, val }) => addSpecField(key, val));
-    }
-  }
-  document.getElementById('modal-add')?.classList.add('open');
-};
-
-window.closeAddModal = function() {
-  document.getElementById('modal-add')?.classList.remove('open');
-};
-
-function resetForm() {
-  ['f-name', 'f-sku', 'f-cat', 'f-desc'].forEach(id => setVal(id, ''));
-  const preview = document.getElementById('photo-preview');
-  if (preview) preview.style.display = 'none';
-  const label = document.getElementById('upload-label-inner');
-  if (label) label.style.display = 'flex';
-  resetSpecFields();
-}
-
+// Helper de formulário compartilhado (Manutenção/Estoque usam)
 function setVal(id, val) {
   const el = document.getElementById(id);
   if (el) el.value = val || '';
 }
-
-function setEl(id, fn) {
-  const el = document.getElementById(id);
-  if (el) fn(el);
-}
-
-function resetSpecFields() {
-  const container = document.getElementById('specs-fields');
-  if (container) {
-    container.innerHTML = `<div class="spec-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <input class="spec-key-input" type="text" placeholder="Campo (ex: Peso)" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:var(--font-mono);font-size:.75rem;outline:none">
-      <input class="spec-val-input" type="text" placeholder="Valor (ex: 12g)" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:var(--font-mono);font-size:.75rem;outline:none">
-    </div>`;
-  }
-}
-
-window.addSpecField = function(k = '', v = '') {
-  const row = document.createElement('div');
-  row.className = 'spec-row';
-  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px';
-  row.innerHTML = `<input class="spec-key-input" type="text" value="${escapeHTML(k)}" placeholder="Campo" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:var(--font-mono);font-size:.75rem;outline:none">
-    <input class="spec-val-input" type="text" value="${escapeHTML(v)}" placeholder="Valor" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:var(--font-mono);font-size:.75rem;outline:none">`;
-  document.getElementById('specs-fields')?.appendChild(row);
-};
-
-window.previewPhoto = function(input) {
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      state.photoDataURL = e.target.result;
-      const preview = document.getElementById('photo-preview');
-      if (preview) { preview.src = state.photoDataURL; preview.style.display = 'block'; }
-      const label = document.getElementById('upload-label-inner');
-      if (label) label.style.display = 'none';
-    };
-    reader.readAsDataURL(input.files[0]);
-  }
-};
-
-window.saveProduct = async function() {
-  const name = (document.getElementById('f-name')?.value || '').trim();
-  if (!name) { toast('Nome obrigatório', 'error'); return; }
-  const sku = (document.getElementById('f-sku')?.value || '').trim() || `SKU-${Date.now()}`;
-  const category = (document.getElementById('f-cat')?.value || '').trim();
-  const description = (document.getElementById('f-desc')?.value || '').trim();
-  const techSpecs = [];
-  document.querySelectorAll('#specs-fields .spec-row').forEach(row => {
-    const k = row.querySelector('.spec-key-input')?.value.trim();
-    const v = row.querySelector('.spec-val-input')?.value.trim();
-    if (k && v) techSpecs.push({ key: k, val: v });
-  });
-  const id = state.editingId || `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-  const qrData = `R2CSCAN:${id}`;
-  const old = state.editingId ? await getById(STORES.PRODUCTS, id) : null;
-  const prod = {
-    id, name, sku, category, description, techSpecs,
-    photo: state.photoDataURL || null, qrData,
-    fav: old ? old.fav : false,
-    createdAt: old?.createdAt || Date.now(),
-    updatedAt: Date.now()
-  };
-  const btn = document.getElementById('save-btn');
-  if (btn) btn.textContent = 'Salvando…';
-  await save(STORES.PRODUCTS, prod);
-  if (btn) {
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Salvar e Gerar QR Code`;
-  }
-  window.closeAddModal();
-  toast('Produto salvo!', 'success');
-  renderHome();
-  if (state.currentPage === 'page-catalog') renderCatalog();
-  if (state.currentPage === 'page-admin') renderAdmin();
-};
 
 // ═══════════════════════════════════════════
 // MANUTENÇÃO
