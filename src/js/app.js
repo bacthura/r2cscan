@@ -22,6 +22,9 @@ import {
 import {
   openSupplierModal, closeSupplierModal, saveSupplier, renderSuppliers
 } from './modules/suppliers.js';
+import {
+  generatePurchaseList, renderPurchases, cyclePurchase, removePurchase, exportPurchases
+} from './modules/purchases.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -58,6 +61,7 @@ function goPage(pageId) {
   const navMap = {
     'page-home': 'nav-home', 'page-scanner': 'nav-scanner', 'page-catalog': 'nav-catalog',
     'page-maint': 'nav-maint', 'page-maint-calendar': 'nav-maint', 'page-stock': 'nav-stock',
+    'page-purchases': 'nav-stock',
     'page-suppliers': 'nav-suppliers', 'page-reports': 'nav-reports', 'page-about': 'nav-about',
     'page-admin': 'nav-home'
   };
@@ -81,6 +85,7 @@ function goPage(pageId) {
     'page-maint': renderMaint,
     'page-maint-calendar': renderMaintCalendar,
     'page-stock': renderStock,
+    'page-purchases': renderPurchases,
     'page-suppliers': renderSuppliers,
     'page-reports': renderReports,
     'page-about': renderAbout
@@ -523,6 +528,15 @@ window.saveMovement = saveMovement;
 window.openSupplierModal = openSupplierModal;
 window.closeSupplierModal = closeSupplierModal;
 window.saveSupplier = saveSupplier;
+
+// ═══════════════════════════════════════════
+// COMPRAS — módulo migrado (modules/purchases.js)
+// Bindings para os handlers inline (onclick=) do HTML
+// ═══════════════════════════════════════════
+window.generatePurchaseList = generatePurchaseList;
+window.cyclePurchase = cyclePurchase;
+window.removePurchase = removePurchase;
+window.exportPurchases = exportPurchases;
 
 // ═══════════════════════════════════════════
 // RELATÓRIOS

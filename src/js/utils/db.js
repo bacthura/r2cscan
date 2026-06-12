@@ -6,13 +6,18 @@ const DB_NAME = 'R2C-Scan';
 const DB_VER = 4;
 
 // Store names — single source of truth
+// workOrders/purchaseRequests fazem parte do schema v4 real (o index.html
+// já os cria); listá-los aqui garante que instalações novas via src/js
+// também os tenham, sem bump de versão.
 export const STORES = {
   PRODUCTS: 'products',
   MAINTENANCE: 'maintenance',
   STOCK: 'stock',
   SUPPLIERS: 'suppliers',
   SCAN_HISTORY: 'scanHistory',
-  MOVEMENTS: 'movements'
+  MOVEMENTS: 'movements',
+  WORK_ORDERS: 'workOrders',
+  PURCHASES: 'purchaseRequests'
 };
 
 let db = null;

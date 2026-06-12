@@ -64,8 +64,12 @@ Migrar nesta ordem. NÃO pular etapas.
        restaurou paridade c/ index.html: tradeName/responsible/whatsapp e filtro
        expandido, que a versão antiga do app.js havia perdido; padrão id-string
        no botão de editar, igual ao módulo 2; sem hooks, autocontido)
-- [ ] **4. Compras** → `src/js/modules/purchases.js`
-      (generatePurchaseList, cyclePurchase, renderPurchases, exportPurchases)
+- [x] **4. Compras** → `src/js/modules/purchases.js` ✅ 2026-06-12
+      (generatePurchaseList, renderPurchases, cyclePurchase, removePurchase,
+       exportPurchases — botão × deixou de chamar dbDelete global e virou
+       removePurchase; downloadCSV/printHTML foram para utils/export.js;
+       STORES do db.js alinhado ao schema v4 real: + workOrders/purchaseRequests,
+       SEM bump de versão)
 - [ ] **5. Manutenção** → `src/js/modules/maintenance.js`
       (openMaintModal, saveMaint, setMaintTab, showMaintDay, nextMaintMonth,
        prevMaintMonth, updateMaintStatus, nextMaintMonth)
@@ -81,6 +85,9 @@ Migrar nesta ordem. NÃO pular etapas.
       testar tudo, e SÓ ENTÃO apagar o JS antigo do index.html.
 
 ### Notas técnicas (lembretes entre módulos)
+
+- downloadCSV e printHTML vivem em `src/js/utils/export.js` (criado no módulo 4).
+  Módulos 6 (exportOS/printOS) e 7 (exportData) devem IMPORTAR de lá — não duplicar.
 
 - Movimentações vivem em localStorage('r2c_movements'). Estoque (módulo 2) e
   Ordens de Serviço (módulo 6) escrevem nas duas. Ao migrar OS, REUSAR saveMovement
