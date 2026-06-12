@@ -10,7 +10,9 @@
       "Bash(node --check sw.js)",
       "Bash(curl -s --max-time 40 \"https://r2c-scan.onrender.com/api/products?search=t\")",
       "Bash(curl -s --max-time 40 https://r2c-scan.onrender.com/)",
-      "Bash(curl -s --max-time 20 https://r2c-scan.onrender.com/api/health)"
+      "Bash(curl -s --max-time 20 https://r2c-scan.onrender.com/api/health)",
+      "Skill(run)",
+      "Skill(run:*)"
     ]
   }
 }

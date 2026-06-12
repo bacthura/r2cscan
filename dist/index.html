@@ -15,6 +15,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Firebase SDK (compat) — autenticação de usuários -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
 <style>
   :root {
@@ -949,19 +952,29 @@
   </div>
 </div>
 
-<!-- MODAL ADMIN LOGIN -->
-<div class="modal-overlay" id="modal-admin-login">
+<!-- MODAL LOGIN (Firebase) -->
+<div class="modal-overlay" id="modal-login">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <h2 style="font-family:var(--font-head);font-size:1.1rem;margin-bottom:6px">🔐 Acesso Admin</h2>
-    <p style="font-size:.75rem;color:var(--text2);margin-bottom:14px">Digite a senha para acessar o painel administrativo</p>
+    <h2 style="font-family:var(--font-head);font-size:1.1rem;margin-bottom:6px">🔐 Login</h2>
+    <p style="font-size:.75rem;color:var(--text2);margin-bottom:14px">Faça login com email e senha</p>
+    <div id="login-error" style="display:none;background:rgba(255,68,102,.1);border:1px solid var(--danger);border-radius:8px;padding:10px;margin-bottom:12px;font-size:.72rem;color:var(--danger)"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email-input" placeholder="seu@email.com" autocomplete="email" onkeypress="if(event.key==='Enter')document.getElementById('login-pw-input').focus()">
+    </div>
     <div class="form-group">
       <label>Senha</label>
-      <input type="password" id="admin-pw-input" placeholder="••••••••" onkeypress="if(event.key==='Enter')checkAdminPw()">
+      <input type="password" id="login-pw-input" placeholder="••••••••" autocomplete="current-password" onkeypress="if(event.key==='Enter')checkAdminPw()">
     </div>
-    <button class="btn btn-primary" onclick="checkAdminPw()">Entrar</button>
+    <div id="login-loading" style="display:none;text-align:center;padding:10px">
+      <div class="ai-spinner" style="margin:0 auto 8px"></div>
+      <p style="font-size:.7rem;color:var(--text2)">Autenticando...</p>
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="checkAdminPw()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg> Entrar
+    </button>
     <button class="btn btn-secondary" style="margin-top:8px" onclick="closeAdminModal()">Cancelar</button>
-    <p style="font-size:.65rem;color:var(--text2);text-align:center;margin-top:10px">Senha: definida no backend</p>
   </div>
 </div>
 
@@ -1159,7 +1172,28 @@ let isAdmin = false;
 let editingId = null;
 let currentDetailId = null;
 let photoDataURL = null;
-const ADMIN_PW = null; // No default password in client; authenticate via backend
+// Firebase Auth (substitui senha admin)
+let firebaseAuth = null;
+let firebaseUser = null;
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyCD3r40576QC0tbHO2HIHNHc_BlOA9Qfr0',
+  authDomain: 'r2cs-8b273.firebaseapp.com',
+  projectId: 'r2cs-8b273',
+  storageBucket: 'r2cs-8b273.firebasestorage.app',
+  messagingSenderId: '933095320860',
+  appId: '1:933095320860:web:3e96078c459985ce22ded9'
+};
+async function initFirebase() {
+  if (firebaseAuth) return;
+  if (typeof firebase !== 'undefined' && firebase.auth) {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    firebaseAuth = firebase.auth();
+    firebaseAuth.onAuthStateChanged(user => {
+      firebaseUser = user;
+      isAdmin = !!user;
+    });
+  }
+}
 let isLight = false;
 let maintCalendarDate = new Date();
 let maintTab = 'all';
@@ -2251,33 +2285,54 @@ function importData(input) {
 }
 
 // ═══════════════════════════════════════════
-//  ADMIN AUTH
+//  ADMIN AUTH (Firebase)
 // ═══════════════════════════════════════════
 function checkAdmin() { if (isAdmin) return true; openAdminModal(); return false; }
-function openAdminModal() { document.getElementById('modal-admin-login').classList.add('open'); setTimeout(() => document.getElementById('admin-pw-input').focus(), 300); }
-function closeAdminModal() { document.getElementById('modal-admin-login').classList.remove('open'); document.getElementById('admin-pw-input').value = ''; }
+function openAdminModal() {
+  if (!firebaseAuth) initFirebase();
+  const errorEl = document.getElementById('login-error');
+  if (errorEl) errorEl.style.display = 'none';
+  document.getElementById('modal-login').classList.add('open');
+  setTimeout(() => document.getElementById('login-email-input')?.focus(), 300);
+}
+function closeAdminModal() {
+  document.getElementById('modal-login').classList.remove('open');
+  const e = document.getElementById('login-email-input');
+  const p = document.getElementById('login-pw-input');
+  if (e) e.value = '';
+  if (p) p.value = '';
+}
 async function checkAdminPw() {
-  const pw = document.getElementById('admin-pw-input').value;
-  // Offline fallback (if ADMIN_PW is set)
-  if (ADMIN_PW && pw === ADMIN_PW) {
-    isAdmin = true;
-    closeAdminModal();
-    toast('✓ Acesso admin liberado (offline)');
-    if (currentPage === 'page-admin') renderAdmin();
-    return;
-  }
-
-  // Try backend login
+  const email = document.getElementById('login-email-input').value.trim();
+  const pw = document.getElementById('login-pw-input').value;
+  const errorEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  const loadingEl = document.getElementById('login-loading');
+  if (!email || !pw) { errorEl.textContent = 'Preencha email e senha'; errorEl.style.display = 'block'; return; }
+  btn.style.display = 'none';
+  loadingEl.style.display = 'block';
+  errorEl.style.display = 'none';
   try {
-    await api.login(pw);
+    if (!firebaseAuth) await initFirebase();
+    const result = await firebaseAuth.signInWithEmailAndPassword(email, pw);
+    firebaseUser = result.user;
     isAdmin = true;
     closeAdminModal();
-    toast('✓ Acesso admin liberado');
+    toast('✓ Login realizado com sucesso');
     if (currentPage === 'page-admin') renderAdmin();
   } catch (err) {
-    document.getElementById('admin-pw-input').style.borderColor = 'var(--danger)';
-    setTimeout(() => document.getElementById('admin-pw-input').style.borderColor = '', 1000);
-    toast('Senha incorreta');
+    const map = {
+      'auth/user-not-found': 'Usuário não encontrado',
+      'auth/wrong-password': 'Senha incorreta',
+      'auth/invalid-credential': 'Email ou senha inválidos',
+      'auth/invalid-email': 'Email inválido',
+      'auth/too-many-requests': 'Muitas tentativas. Tente mais tarde'
+    };
+    errorEl.textContent = map[err.code] || err.message || 'Erro ao fazer login';
+    errorEl.style.display = 'block';
+  } finally {
+    btn.style.display = 'flex';
+    loadingEl.style.display = 'none';
   }
 }
 
@@ -2298,6 +2353,7 @@ function toast(msg) {
 // ═══════════════════════════════════════════
 async function init() {
   await initDB();
+  initFirebase();
   if (localStorage.getItem('r2c-theme') === 'light') { isLight = true; document.body.classList.add('light-theme'); }
 
   // Seed demo products
@@ -2353,7 +2409,7 @@ async function init() {
 
 // Close modals on overlay click
 document.getElementById('modal-add').addEventListener('click', e => { if(e.target === e.currentTarget) closeAddModal(); });
-document.getElementById('modal-admin-login').addEventListener('click', e => { if(e.target === e.currentTarget) closeAdminModal(); });
+document.getElementById('modal-login').addEventListener('click', e => { if(e.target === e.currentTarget) closeAdminModal(); });
 document.getElementById('modal-maint').addEventListener('click', e => { if(e.target === e.currentTarget) closeMaintModal(); });
 document.getElementById('modal-stock').addEventListener('click', e => { if(e.target === e.currentTarget) closeStockModal(); });
 document.getElementById('modal-movement').addEventListener('click', e => { if(e.target === e.currentTarget) closeMovementModal(); });
