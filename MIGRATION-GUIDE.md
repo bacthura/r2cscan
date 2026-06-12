@@ -59,8 +59,11 @@ Migrar nesta ordem. NÃO pular etapas.
        toggleMovementFields, saveMovement, renderMovements — sem hooks, módulo
        autocontido; openStockModal aceita id-string OU objeto, botão ✏️ passou
        a passar só o id em vez de JSON serializado no onclick)
-- [ ] **3. Fornecedores** → `src/js/modules/suppliers.js`
-      (openSupplierModal, saveSupplier, closeSupplierModal)
+- [x] **3. Fornecedores** → `src/js/modules/suppliers.js` ✅ 2026-06-12
+      (openSupplierModal, closeSupplierModal, saveSupplier, renderSuppliers —
+       restaurou paridade c/ index.html: tradeName/responsible/whatsapp e filtro
+       expandido, que a versão antiga do app.js havia perdido; padrão id-string
+       no botão de editar, igual ao módulo 2; sem hooks, autocontido)
 - [ ] **4. Compras** → `src/js/modules/purchases.js`
       (generatePurchaseList, cyclePurchase, renderPurchases, exportPurchases)
 - [ ] **5. Manutenção** → `src/js/modules/maintenance.js`

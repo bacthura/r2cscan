@@ -19,6 +19,9 @@ import {
   openMovementModal, openMovementModalForItem, closeMovementModal,
   toggleMovementFields, saveMovement
 } from './modules/stock.js';
+import {
+  openSupplierModal, closeSupplierModal, saveSupplier, renderSuppliers
+} from './modules/suppliers.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -514,77 +517,12 @@ window.toggleMovementFields = toggleMovementFields;
 window.saveMovement = saveMovement;
 
 // ═══════════════════════════════════════════
-// FORNECEDORES
+// FORNECEDORES — módulo migrado (modules/suppliers.js)
+// Bindings para os handlers inline (onclick=) do HTML
 // ═══════════════════════════════════════════
-window.openSupplierModal = function(data) {
-  const editId = document.getElementById('supp-edit-id');
-  if (editId) editId.value = data?.id || '';
-  const title = document.getElementById('modal-supplier-title');
-  if (title) title.textContent = data ? '✏️ Editar Fornecedor' : '🏭 Novo Fornecedor';
-  setVal('sup-name', data?.name);
-  setVal('sup-cnpj', data?.cnpj);
-  setVal('sup-ie', data?.ie);
-  setVal('sup-contact', data?.contact);
-  setVal('sup-phone', data?.phone);
-  setVal('sup-email', data?.email);
-  setVal('sup-addr', data?.address);
-  setVal('sup-cat', data?.category);
-  setVal('sup-obs', data?.obs);
-  document.getElementById('modal-supplier')?.classList.add('open');
-};
-
-window.closeSupplierModal = function() {
-  document.getElementById('modal-supplier')?.classList.remove('open');
-};
-
-window.saveSupplier = async function() {
-  const name = (document.getElementById('sup-name')?.value || '').trim();
-  if (!name) { toast('Nome da empresa obrigatório', 'error'); return; }
-  const editId = document.getElementById('supp-edit-id')?.value || '';
-  const id = editId || `supp_${Date.now()}`;
-  const old = editId ? await getById(STORES.SUPPLIERS, id) : null;
-  const supp = {
-    id, name,
-    cnpj: (document.getElementById('sup-cnpj')?.value || '').trim(),
-    ie: (document.getElementById('sup-ie')?.value || '').trim(),
-    contact: (document.getElementById('sup-contact')?.value || '').trim(),
-    phone: (document.getElementById('sup-phone')?.value || '').trim(),
-    email: (document.getElementById('sup-email')?.value || '').trim(),
-    address: (document.getElementById('sup-addr')?.value || '').trim(),
-    category: (document.getElementById('sup-cat')?.value || '').trim(),
-    obs: (document.getElementById('sup-obs')?.value || '').trim(),
-    createdAt: old?.createdAt || Date.now(),
-    updatedAt: Date.now()
-  };
-  await save(STORES.SUPPLIERS, supp);
-  window.closeSupplierModal();
-  toast('Fornecedor salvo!', 'success');
-  renderSuppliers();
-};
-
-async function renderSuppliers() {
-  let all = await getAll(STORES.SUPPLIERS);
-  const query = (document.getElementById('supplier-search')?.value || '').toLowerCase();
-  if (query) all = all.filter(s => s.name.toLowerCase().includes(query) || (s.category || '').toLowerCase().includes(query) || (s.contact || '').toLowerCase().includes(query));
-  all.sort((a, b) => a.name.localeCompare(b.name));
-
-  const list = document.getElementById('supplier-list');
-  if (!list) return;
-  if (all.length === 0) {
-    list.innerHTML = getEmptyState('nenhum fornecedor cadastrado');
-    return;
-  }
-  list.innerHTML = all.map(s => `<div class="mini-card">
-    <div class="mc-icon" style="background:rgba(168,85,247,.1)">🏭</div>
-    <div class="mc-body">
-      <div class="mc-title">${escapeHTML(s.name)}</div>
-      <div class="mc-sub">${s.contact || '—'}${s.phone ? ' · ' + s.phone : ''}${s.category ? ' · ' + s.category : ''}</div>
-    </div>
-    <button onclick="event.stopPropagation();window.openSupplierModal(JSON.parse('${JSON.stringify(s).replace(/'/g, '&#39;')}'))" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px;cursor:pointer">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" style="width:14px;height:14px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-    </button>
-  </div>`).join('');
-}
+window.openSupplierModal = openSupplierModal;
+window.closeSupplierModal = closeSupplierModal;
+window.saveSupplier = saveSupplier;
 
 // ═══════════════════════════════════════════
 // RELATÓRIOS
