@@ -25,6 +25,11 @@ import {
 import {
   generatePurchaseList, renderPurchases, cyclePurchase, removePurchase, exportPurchases
 } from './modules/purchases.js';
+import {
+  registerMaintHooks, openMaintModal, closeMaintModal, addCheckItem, saveMaint,
+  updateMaintStatus, setMaintTab, renderMaint, maintMiniCardHTML,
+  prevMaintMonth, nextMaintMonth, renderMaintCalendar, showMaintDay
+} from './modules/maintenance.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -275,237 +280,22 @@ async function renderAdmin() {
     : `<div class="empty-state"><p>Nenhum produto cadastrado</p></div>`;
 }
 
-// Helper de formulário compartilhado (Manutenção/Estoque usam)
-function setVal(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.value = val || '';
-}
-
 // ═══════════════════════════════════════════
-// MANUTENÇÃO
+// MANUTENÇÃO — módulo migrado (modules/maintenance.js)
+// Bindings para os handlers inline (onclick=) do HTML
 // ═══════════════════════════════════════════
-window.openMaintModal = function(data) {
-  const editId = document.getElementById('maint-edit-id');
-  if (editId) editId.value = data?.id || '';
-  const title = document.getElementById('modal-maint-title');
-  if (title) title.textContent = data ? '✏️ Editar Manutenção' : '🔧 Nova Manutenção';
-  setVal('m-name', data?.name);
-  setVal('m-type', data?.type || 'Preventiva');
-  setVal('m-priority', data?.priority || 'media');
-  setVal('m-date', data?.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
-  setVal('m-time', data?.time || '08:00');
-  setVal('m-desc', data?.desc);
-  setVal('m-tech', data?.tech);
-  setVal('m-recurrence', data?.recurrence || 'none');
-  const checklist = document.getElementById('maint-checklist');
-  if (checklist) {
-    checklist.innerHTML = '';
-    if (data?.checklist) {
-      data.checklist.forEach((item) => addCheckItem(item.text, item.done));
-    } else {
-      addCheckItem();
-    }
-  }
-  document.getElementById('modal-maint')?.classList.add('open');
-};
+window.openMaintModal = openMaintModal;
+window.closeMaintModal = closeMaintModal;
+window.addCheckItem = addCheckItem;
+window.saveMaint = saveMaint;
+window.updateMaintStatus = updateMaintStatus;
+window.setMaintTab = setMaintTab;
+window.prevMaintMonth = prevMaintMonth;
+window.nextMaintMonth = nextMaintMonth;
+window.showMaintDay = showMaintDay;
 
-window.closeMaintModal = function() {
-  document.getElementById('modal-maint')?.classList.remove('open');
-};
-
-window.addCheckItem = function(text = '', done = false) {
-  const div = document.createElement('div');
-  div.className = 'maint-check-item';
-  div.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;align-items:center';
-  div.innerHTML = `<input type="checkbox" ${done ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0">
-    <input type="text" value="${escapeHTML(text)}" placeholder="Item do checklist" class="m-check-input" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:var(--font-mono);font-size:.72rem;outline:none">
-    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--danger);font-size:1.1rem;cursor:pointer;flex-shrink:0">×</button>`;
-  document.getElementById('maint-checklist')?.appendChild(div);
-};
-
-window.saveMaint = async function() {
-  const name = (document.getElementById('m-name')?.value || '').trim();
-  if (!name) { toast('Nome do equipamento obrigatório', 'error'); return; }
-  const editId = document.getElementById('maint-edit-id')?.value || '';
-  const id = editId || `maint_${Date.now()}`;
-  const checklistItems = [];
-  document.querySelectorAll('#maint-checklist .maint-check-item').forEach(div => {
-    const text = div.querySelector('.m-check-input')?.value.trim();
-    const done = div.querySelector('input[type="checkbox"]')?.checked || false;
-    if (text) checklistItems.push({ text, done });
-  });
-  const dateStr = document.getElementById('m-date')?.value || '';
-  const timeStr = document.getElementById('m-time')?.value || '08:00';
-  const date = new Date(`${dateStr}T${timeStr}`).getTime();
-  const old = editId ? await getById(STORES.MAINTENANCE, id) : null;
-  const raw = {
-    id, name,
-    type: document.getElementById('m-type')?.value || 'Preventiva',
-    priority: document.getElementById('m-priority')?.value || 'media',
-    date, time: timeStr,
-    desc: (document.getElementById('m-desc')?.value || '').trim(),
-    tech: (document.getElementById('m-tech')?.value || '').trim(),
-    recurrence: document.getElementById('m-recurrence')?.value || 'none',
-    checklist: checklistItems,
-    status: old?.status || 'pending',
-    createdAt: old?.createdAt || Date.now(),
-    updatedAt: Date.now()
-  };
-  await save(STORES.MAINTENANCE, raw);
-  window.closeMaintModal();
-  toast('Manutenção salva!', 'success');
-  renderMaint();
-  if (state.currentPage === 'page-home') renderHome();
-
-  if (!editId && raw.recurrence !== 'none') {
-    scheduleRecurrence(raw);
-  }
-};
-
-async function scheduleRecurrence(raw) {
-  const intervals = { daily: 1, weekly: 7, monthly: 30, quarterly: 90, yearly: 365 };
-  const days = intervals[raw.recurrence];
-  if (!days) return;
-  for (let i = 1; i <= 4; i++) {
-    const newDate = new Date(raw.date);
-    newDate.setDate(newDate.getDate() + days * i);
-    const newId = `maint_${Date.now()}_${i}`;
-    const recurring = { ...raw, id: newId, date: newDate.getTime(), createdAt: Date.now(), updatedAt: Date.now(), status: 'pending', recurrence: 'none' };
-    await save(STORES.MAINTENANCE, recurring);
-  }
-}
-
-window.updateMaintStatus = async function(id, status) {
-  const item = await getById(STORES.MAINTENANCE, id);
-  if (!item) return;
-  item.status = status;
-  item.updatedAt = Date.now();
-  await save(STORES.MAINTENANCE, item);
-  toast(`Status alterado para: ${status}`, 'success');
-  renderMaint();
-  if (state.currentPage === 'page-home') renderHome();
-  if (state.currentPage === 'page-maint-calendar') renderMaintCalendar();
-};
-
-window.setMaintTab = function(el, tab) {
-  document.querySelectorAll('#maint-tabs .tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  state.maintTab = tab;
-  renderMaint();
-};
-
-async function renderMaint() {
-  let all = await getAll(STORES.MAINTENANCE);
-  all.sort((a, b) => b.date - a.date);
-  if (state.maintTab !== 'all') all = all.filter(m => m.status === state.maintTab);
-
-  const list = document.getElementById('maint-list');
-  if (!list) return;
-  if (all.length === 0) {
-    list.innerHTML = getEmptyState('nenhuma manutenção encontrada');
-    return;
-  }
-  list.innerHTML = all.map(m => {
-    const jsonStr = JSON.stringify(m).replace(/'/g, '&#39;');
-    const statusClass = { pending: 'warn', inprogress: 'info', done: 'ok' };
-    const statusText = { pending: 'Pendente', inprogress: 'Em Andamento', done: 'Concluída' };
-    const prioIcon = m.priority === 'critica' ? '🔴' : m.priority === 'alta' ? '🟠' : m.priority === 'media' ? '🟡' : '🟢';
-    const doneCount = m.checklist ? m.checklist.filter(c => c.done).length : 0;
-    const totalCount = m.checklist ? m.checklist.length : 0;
-    return `<div class="mini-card">
-      <div class="mc-icon" style="background:rgba(0,200,255,.1)">${prioIcon}</div>
-      <div class="mc-body" onclick="window.openMaintModal(JSON.parse('${jsonStr}'))">
-        <div class="mc-title">${escapeHTML(m.name)}</div>
-        <div class="mc-sub">${m.type} — ${new Date(m.date).toLocaleString('pt-BR')}${m.tech ? ' · ' + escapeHTML(m.tech) : ''}</div>
-        ${totalCount > 0 ? `<div class="mc-sub">Checklist: ${doneCount}/${totalCount}</div>` : ''}
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-        <span class="status-badge ${statusClass[m.status] || 'warn'}">${statusText[m.status] || 'Pendente'}</span>
-        <div style="display:flex;gap:4px">
-          <button onclick="event.stopPropagation();window.updateMaintStatus('${m.id}','inprogress')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:.6rem;cursor:pointer;color:var(--accent2)">▶</button>
-          <button onclick="event.stopPropagation();window.updateMaintStatus('${m.id}','done')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:.6rem;cursor:pointer;color:var(--accent)">✓</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function maintMiniCardHTML(m) {
-  const statusText = { pending: 'Pendente', inprogress: 'Em Andamento', done: 'Concluída' };
-  const statusClass = { pending: 'warn', inprogress: 'info', done: 'ok' };
-  return `<div class="mini-card" onclick="goPage('page-maint')">
-    <div class="mc-icon" style="background:${m.priority === 'critica' || m.priority === 'alta' ? 'rgba(255,68,102,.1)' : 'rgba(0,200,255,.1)'}">
-      ${m.priority === 'critica' || m.priority === 'alta' ? '⚠️' : '🔧'}
-    </div>
-    <div class="mc-body">
-      <div class="mc-title">${escapeHTML(m.name)}</div>
-      <div class="mc-sub">${m.type} — ${new Date(m.date).toLocaleDateString('pt-BR')}</div>
-    </div>
-    <span class="status-badge ${statusClass[m.status] || 'warn'}">${statusText[m.status] || 'Pendente'}</span>
-  </div>`;
-}
-
-// ═══════════════════════════════════════════
-// CALENDÁRIO
-// ═══════════════════════════════════════════
-window.prevMaintMonth = function() {
-  state.maintCalendarDate.setMonth(state.maintCalendarDate.getMonth() - 1);
-  renderMaintCalendar();
-};
-
-window.nextMaintMonth = function() {
-  state.maintCalendarDate.setMonth(state.maintCalendarDate.getMonth() + 1);
-  renderMaintCalendar();
-};
-
-async function renderMaintCalendar() {
-  const year = state.maintCalendarDate.getFullYear();
-  const month = state.maintCalendarDate.getMonth();
-  const label = document.getElementById('maint-month-label');
-  if (label) label.textContent = new Date(year, month).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date();
-  const all = await getAll(STORES.MAINTENANCE);
-  const monthMaints = all.filter(m => { const d = new Date(m.date); return d.getMonth() === month && d.getFullYear() === year; });
-
-  let grid = '';
-  const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  dayNames.forEach(d => { grid += `<div style="text-align:center;font-size:.6rem;color:var(--text2);padding:4px">${d}</div>`; });
-  for (let i = 0; i < firstDay; i++) grid += '<div></div>';
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const dayMaints = monthMaints.filter(m => new Date(m.date).toISOString().split('T')[0] === dateStr);
-    const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
-    const hasMaint = dayMaints.length > 0;
-    grid += `<div onclick="window.showMaintDay('${dateStr}')" style="background:${hasMaint ? 'rgba(0,200,255,.1)' : 'transparent'};border:${isToday ? '2px solid var(--accent)' : '1px solid var(--border)'};border-radius:6px;padding:4px;text-align:center;cursor:pointer;font-size:.72rem;min-height:36px;display:flex;flex-direction:column;align-items:center;justify-content:center">
-      <span>${day}</span>
-      ${hasMaint ? `<span style="font-size:.5rem;color:var(--accent2)">${dayMaints.length}</span>` : ''}
-    </div>`;
-  }
-  const gridEl = document.getElementById('maint-calendar-grid');
-  if (gridEl) gridEl.innerHTML = grid;
-}
-
-window.showMaintDay = async function(dateStr) {
-  const all = await getAll(STORES.MAINTENANCE);
-  const dayMaints = all.filter(m => new Date(m.date).toISOString().split('T')[0] === dateStr);
-  const list = document.getElementById('maint-day-list');
-  if (!list) return;
-  if (dayMaints.length === 0) {
-    list.innerHTML = `<div class="empty-state"><p>Nenhuma manutenção agendada para ${new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR')}</p></div>`;
-    return;
-  }
-  list.innerHTML = dayMaints.map(m => `<div class="mini-card" onclick="window.openMaintModal(JSON.parse('${JSON.stringify(m).replace(/'/g, '&#39;')}'))">
-    <div class="mc-icon" style="background:rgba(0,200,255,.1)">🔧</div>
-    <div class="mc-body">
-      <div class="mc-title">${escapeHTML(m.name)}</div>
-      <div class="mc-sub">${m.type} · ${m.tech || 'Sem técnico'}</div>
-    </div>
-    <span class="status-badge ${m.status === 'done' ? 'ok' : m.status === 'inprogress' ? 'info' : 'warn'}">${m.status === 'done' ? 'Concluída' : m.status === 'inprogress' ? 'Em Andamento' : 'Pendente'}</span>
-  </div>`).join('');
-};
+// Gancho: renderHome ainda vive no app.js
+registerMaintHooks({ renderHome });
 
 // ═══════════════════════════════════════════
 // ESTOQUE — módulo migrado (modules/stock.js)

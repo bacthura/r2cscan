@@ -70,9 +70,12 @@ Migrar nesta ordem. NÃO pular etapas.
        removePurchase; downloadCSV/printHTML foram para utils/export.js;
        STORES do db.js alinhado ao schema v4 real: + workOrders/purchaseRequests,
        SEM bump de versão)
-- [ ] **5. Manutenção** → `src/js/modules/maintenance.js`
-      (openMaintModal, saveMaint, setMaintTab, showMaintDay, nextMaintMonth,
-       prevMaintMonth, updateMaintStatus, nextMaintMonth)
+- [x] **5. Manutenção** → `src/js/modules/maintenance.js` ✅ 2026-06-12
+      (openMaintModal, closeMaintModal, addCheckItem, saveMaint, updateMaintStatus,
+       setMaintTab, renderMaint, maintMiniCardHTML, prevMaintMonth, nextMaintMonth,
+       renderMaintCalendar, showMaintDay; scheduleRecurrence privado — padrão
+       id-string nos cards; hooks p/ renderHome; maintMiniCardHTML exportado pois
+       a Home importa; setVal órfão removido do app.js)
 - [ ] **6. Ordens de Serviço (MAIOR — ~30 funções)** → `src/js/modules/workorders.js`
       (tudo que começa com OS / os: openOSModal, saveOS, renderOS,
        renderOSDashboard, renderOSDetail, changeOSStatus, addOSTimelineNote,
