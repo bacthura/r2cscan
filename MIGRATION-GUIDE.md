@@ -88,9 +88,14 @@ Migrar nesta ordem. NÃO pular etapas.
        Arquivo já vinha commitado; esta entrega foi o passo 4 — ligar no app.js:
        import + navMap (page-os/page-os-dash) + renderers + bindings window.* +
        fechar modais no overlay.)
-- [ ] **7. Relatórios + extras** → `src/js/modules/reports.js`
-      (computeKPIs, renderReports, setReportsTab, downloadCSV, exportData,
-       importData, exportOS, printOS, printHTML, startVoiceSearch, toggleTheme)
+- [x] **7. Relatórios + extras** → `src/js/modules/reports.js` ✅ 2026-06-13
+      (renderReports + renderProdReports/renderMaintReports/renderStockReports,
+       setReportsTab, exportData (+downloadBlob), importData, toggleTheme,
+       startVoiceSearch — EXTRAÍDOS verbatim do app.js, não portados do
+       index.html (já estavam migrados lá). reports.js importa state de app.js,
+       renderCatalog de products.js, e renderHome via gancho registerReportsHooks.
+       computeKPIs/exportOS/printOS ficam em workorders.js e downloadCSV/printHTML
+       em export.js — reports.js NÃO os duplica.)
 - [ ] **8. FINAL** → trocar o `<script>` inline do index.html por
       `<script type="module" src="/src/js/main.js"></script>`,
       testar tudo, e SÓ ENTÃO apagar o JS antigo do index.html.
