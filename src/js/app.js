@@ -4,7 +4,6 @@
  */
 import { initDB, getAll, getById, save, remove, STORES } from './utils/db.js';
 import toast from './utils/toast.js';
-import api from './utils/api.js';
 import { escapeHTML } from './utils/format.js';
 import { startScanner, stopScanner, toggleCamera, requestCameraPermission } from './scanner.js';
 import {
@@ -42,6 +41,12 @@ import {
   registerReportsHooks, toggleTheme, startVoiceSearch, setReportsTab,
   renderReports, exportData, importData
 } from './modules/reports.js';
+import {
+  initAuth, registerAuthHooks, gateShow, openLoginModal, closeLoginModal,
+  handleGateLogin, handleGateRegister, handleLogin, handleLogout,
+  checkAdmin, openAdminModal, checkAdminPw,
+  renderUsers, openUserModal, closeUserModal, saveUser
+} from './modules/auth.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -81,7 +86,7 @@ function goPage(pageId) {
     'page-os': 'nav-maint', 'page-os-dash': 'nav-maint',
     'page-stock': 'nav-stock', 'page-purchases': 'nav-stock',
     'page-suppliers': 'nav-suppliers', 'page-reports': 'nav-reports', 'page-about': 'nav-about',
-    'page-admin': 'nav-home'
+    'page-admin': 'nav-home', 'page-users': 'nav-home'
   };
   const navItem = document.getElementById(navMap[pageId]);
   if (navItem) navItem.classList.add('active');
@@ -108,7 +113,8 @@ function goPage(pageId) {
     'page-purchases': renderPurchases,
     'page-suppliers': renderSuppliers,
     'page-reports': renderReports,
-    'page-about': renderAbout
+    'page-about': renderAbout,
+    'page-users': renderUsers
   };
   if (renderers[pageId]) renderers[pageId]();
 }
@@ -364,42 +370,25 @@ async function renderAbout() {
 }
 
 // ═══════════════════════════════════════════
-// ADMIN AUTH
+// ACESSO / AUTENTICAÇÃO — módulo migrado (modules/auth.js)
+// Bindings para os handlers inline (onclick=) do gate e do modal de login
 // ═══════════════════════════════════════════
-window.checkAdmin = function() {
-  if (state.isAdmin) return true;
-  window.openAdminModal();
-  return false;
-};
+window.gateShow = gateShow;
+window.handleGateLogin = handleGateLogin;
+window.handleGateRegister = handleGateRegister;
+window.handleLogin = handleLogin;
+window.handleLogout = handleLogout;
+window.openLoginModal = openLoginModal;
+window.closeLoginModal = closeLoginModal;
+window.checkAdmin = checkAdmin;
+window.openAdminModal = openAdminModal;
+window.checkAdminPw = checkAdminPw;
+window.openUserModal = openUserModal;
+window.closeUserModal = closeUserModal;
+window.saveUser = saveUser;
 
-window.openAdminModal = function() {
-  document.getElementById('modal-admin-login')?.classList.add('open');
-  setTimeout(() => document.getElementById('admin-pw-input')?.focus(), 300);
-};
-
-window.closeAdminModal = function() {
-  document.getElementById('modal-admin-login')?.classList.remove('open');
-  const pw = document.getElementById('admin-pw-input');
-  if (pw) pw.value = '';
-};
-
-window.checkAdminPw = async function() {
-  const pw = document.getElementById('admin-pw-input')?.value;
-  if (!pw) { toast('Digite a senha', 'warning'); return; }
-
-  try {
-    await api.login(pw);
-    state.isAdmin = true;
-    window.closeAdminModal();
-    toast('✓ Acesso admin liberado', 'success');
-    if (state.currentPage === 'page-admin') renderAdmin();
-  } catch (err) {
-    const pwInput = document.getElementById('admin-pw-input');
-    if (pwInput) pwInput.style.borderColor = 'var(--danger)';
-    setTimeout(() => { if (pwInput) pwInput.style.borderColor = ''; }, 1000);
-    toast('Senha incorreta', 'error');
-  }
-};
+// Gancho: renderAdmin vive no app.js
+registerAuthHooks({ renderAdmin });
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -424,6 +413,9 @@ function updateAdminBadgeVisibility() {
 // ═══════════════════════════════════════════
 export async function init() {
   console.log('🚀 R2C-Scan v2.0 initializing...');
+
+  // Bootstrap do controle de acesso (Firebase Auth + gate). Assíncrono, com retry próprio.
+  initAuth();
 
   // Initialize database
   await initDB();
@@ -452,7 +444,7 @@ export async function init() {
 
   // Register modal close handlers
   document.getElementById('modal-add')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeAddModal(); });
-  document.getElementById('modal-admin-login')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeAdminModal(); });
+  document.getElementById('modal-login')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeLoginModal(); });
   document.getElementById('modal-maint')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeMaintModal(); });
   document.getElementById('modal-stock')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeStockModal(); });
   document.getElementById('modal-movement')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeMovementModal(); });
@@ -460,6 +452,7 @@ export async function init() {
   document.getElementById('modal-os')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeOSModal(); });
   document.getElementById('modal-os-material')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeOSMaterialModal(); });
   document.getElementById('modal-os-photo')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeOSPhotoModal(); });
+  document.getElementById('modal-user')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeUserModal(); });
 
   console.log('✅ R2C-Scan v2.0 ready');
 }

@@ -869,6 +869,16 @@
   <button class="btn btn-primary" style="margin-top:6px" onclick="openAddModal()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo Produto
   </button>
+  <button class="btn btn-secondary" style="margin-top:8px" onclick="goPage('page-users')">👥 Gerenciar Acesso</button>
+</div>
+
+<!-- CONTROLE DE ACESSO (admin) -->
+<div class="page" id="page-users">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="btn btn-secondary" style="padding:8px 10px" onclick="goPage('page-admin')">←</button>
+    <div class="section-label" style="margin:0;flex:1">Controle de Acesso</div>
+  </div>
+  <div id="users-list"></div>
 </div>
 
 <!-- BOTTOM NAV -->
@@ -1328,6 +1338,23 @@
     </div>
 
     <button class="btn btn-secondary" style="margin-top:8px" onclick="closeLoginModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL: editar usuário / permissões (admin) -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h2 style="font-family:var(--font-head);font-size:1.1rem;margin-bottom:6px" id="user-modal-name">Usuário</h2>
+    <p id="user-modal-email" style="font-size:.74rem;color:var(--text2);margin-bottom:12px"></p>
+    <div class="form-group"><label>Papel</label>
+      <select id="user-role"><option value="employee">Funcionário</option><option value="admin">Administrador</option></select></div>
+    <div class="form-group"><label>Status</label>
+      <select id="user-status"><option value="pending">Pendente</option><option value="approved">Aprovado</option><option value="disabled">Desativado</option></select></div>
+    <div class="section-label">Permissões por módulo</div>
+    <div id="user-perms"></div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="saveUser()">Salvar</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeUserModal()">Cancelar</button>
   </div>
 </div>
 
