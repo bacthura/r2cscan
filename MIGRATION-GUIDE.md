@@ -105,9 +105,11 @@ Migrar nesta ordem. NÃO pular etapas.
              app.js; absorve o utils/firebaseAuth.js incompleto. + painel admin de
              aprovação de usuários — FEATURE NOVA. DOM novo no index.html: botão
              "Gerenciar Acesso", page-users, modal-user. Dormente até o swap (8c).)
-      - [ ] **8b. Captura por IA** → migrar `captureAndAnalyze` + `aiAnalyzeImage`,
-            adaptando ao scanner novo (html5-qrcode `#scanner-reader` em vez do
-            `#scanner-video`/`#scanner-canvas` do jsQR).
+      - [x] **8b. Captura por IA** → `src/js/modules/aiscan.js` + `scanner.js` ✅ 2026-06-13
+            (captureFrame() pega o <video> do html5-qrcode em #scanner-reader;
+             captureAndAnalyze portado; aiAnalyzeImage é STUB local — sem IA real,
+             igual ao de hoje — e o ping morto ao backend foi removido. Dormente
+             até o swap. Obs.: "Esqueci minha senha" no gate também entrou (auth.js).)
       - [ ] **8c. Swap** → trocar o `<script>` + ajustar o markup do scanner; expor
             `window.renderCatalog/renderStock/renderSuppliers` (buscas `oninput` que
             faltavam); testar TUDO com o inline ainda presente (rede de segurança).
