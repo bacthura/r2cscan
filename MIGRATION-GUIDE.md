@@ -96,9 +96,22 @@ Migrar nesta ordem. NÃO pular etapas.
        renderCatalog de products.js, e renderHome via gancho registerReportsHooks.
        computeKPIs/exportOS/printOS ficam em workorders.js e downloadCSV/printHTML
        em export.js — reports.js NÃO os duplica.)
-- [ ] **8. FINAL** → trocar o `<script>` inline do index.html por
-      `<script type="module" src="/src/js/main.js"></script>`,
-      testar tudo, e SÓ ENTÃO apagar o JS antigo do index.html.
+- [ ] **8. FINAL** → trocar o `<script>` inline por `<script type="module" src="/src/js/main.js">`, testar, e SÓ ENTÃO apagar o JS antigo.
+      ⚠️ **Pré-requisitos descobertos** (NÃO previstos no guia original): handlers
+      que só existiam inline e nunca foram atribuídos a um módulo (0-7).
+      - [x] **8a. Acesso / Autenticação** → `src/js/modules/auth.js` ✅ 2026-06-13
+            (Firebase Auth + Firestore, gate, perfis/RBAC com `can`/`isAdminUser`,
+             login/registro/logout; substitui o admin-auth obsoleto via api.login do
+             app.js; absorve o utils/firebaseAuth.js incompleto. + painel admin de
+             aprovação de usuários — FEATURE NOVA. DOM novo no index.html: botão
+             "Gerenciar Acesso", page-users, modal-user. Dormente até o swap (8c).)
+      - [ ] **8b. Captura por IA** → migrar `captureAndAnalyze` + `aiAnalyzeImage`,
+            adaptando ao scanner novo (html5-qrcode `#scanner-reader` em vez do
+            `#scanner-video`/`#scanner-canvas` do jsQR).
+      - [ ] **8c. Swap** → trocar o `<script>` + ajustar o markup do scanner; expor
+            `window.renderCatalog/renderStock/renderSuppliers` (buscas `oninput` que
+            faltavam); testar TUDO com o inline ainda presente (rede de segurança).
+      - [ ] **8d. Limpeza** → remover o bloco de JS inline antigo do index.html.
 
 ### Notas técnicas (lembretes entre módulos)
 
