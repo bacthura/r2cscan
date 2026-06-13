@@ -96,7 +96,7 @@ Migrar nesta ordem. NÃO pular etapas.
        renderCatalog de products.js, e renderHome via gancho registerReportsHooks.
        computeKPIs/exportOS/printOS ficam em workorders.js e downloadCSV/printHTML
        em export.js — reports.js NÃO os duplica.)
-- [ ] **8. FINAL** → trocar o `<script>` inline por `<script type="module" src="/src/js/main.js">`, testar, e SÓ ENTÃO apagar o JS antigo.
+- [x] **8. FINAL** ✅ 2026-06-13 — app roda 100% pela base de módulos ES (`main.js`). index.html de 209KB → 86KB.
       ⚠️ **Pré-requisitos descobertos** (NÃO previstos no guia original): handlers
       que só existiam inline e nunca foram atribuídos a um módulo (0-7).
       - [x] **8a. Acesso / Autenticação** → `src/js/modules/auth.js` ✅ 2026-06-13
@@ -116,7 +116,8 @@ Migrar nesta ordem. NÃO pular etapas.
             markup do scanner já tinha `#scanner-reader`. Smoke test headless OK (módulos
             carregam, Firebase init, gate renderiza). FALTA seu teste manual COMPLETO de
             todas as telas antes do 8d (que remove a rede de segurança).
-      - [ ] **8d. Limpeza** → remover o bloco de JS inline antigo do index.html.
+      - [x] **8d. Limpeza** → ✅ 2026-06-13 — removidos os 2 blocos inline neutralizados
+            (~2360 linhas) + CSS morto do scanner jsQR. (Recuperável via histórico do git.)
 
 ### Notas técnicas (lembretes entre módulos)
 
