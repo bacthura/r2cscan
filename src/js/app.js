@@ -47,6 +47,7 @@ import {
   checkAdmin, openAdminModal, checkAdminPw,
   renderUsers, openUserModal, closeUserModal, saveUser
 } from './modules/auth.js';
+import { captureAndAnalyze } from './modules/aiscan.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -177,6 +178,9 @@ window.restartScanner = function() {
   setupScannerPage();
   toast('Scanner reiniciado', 'info');
 };
+
+// Captura por IA — módulo migrado (modules/aiscan.js); botão capture-btn no HTML
+window.captureAndAnalyze = captureAndAnalyze;
 
 // ═══════════════════════════════════════════
 // PRODUTOS — módulo migrado (modules/products.js)

@@ -183,7 +183,22 @@ export async function requestCameraPermission() {
   }
 }
 
+/**
+ * Captura um frame do vídeo do scanner (para a análise por IA).
+ * O html5-qrcode injeta um <video> dentro de #scanner-reader; desenhamos num canvas.
+ * @returns {string|null} base64 JPEG (sem o prefixo data:), ou null se a câmera não estiver ativa
+ */
+export function captureFrame() {
+  const video = document.querySelector('#scanner-reader video');
+  if (!video || !video.videoWidth) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+}
+
 export default {
   initScanner, startScanner, stopScanner,
-  toggleCamera, getFacingMode, requestCameraPermission
+  toggleCamera, getFacingMode, requestCameraPermission, captureFrame
 };
