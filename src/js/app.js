@@ -30,6 +30,14 @@ import {
   updateMaintStatus, setMaintTab, renderMaint, maintMiniCardHTML,
   prevMaintMonth, nextMaintMonth, renderMaintCalendar, showMaintDay
 } from './modules/maintenance.js';
+import {
+  setOSTab, renderOS, openOSModal, closeOSModal, saveOS,
+  openOSDetail, closeOSDetail, setOSDetailTab, editCurrentOS, changeOSStatus,
+  addOSTimelineNote, deleteOS, openOSMaterialModal, closeOSMaterialModal,
+  onOSMatStockChange, saveOSMaterial, removeOSMaterial,
+  openOSPhotoModal, closeOSPhotoModal, onOSPhotoFile, saveOSPhoto,
+  renderOSDashboard, exportOS, printOS
+} from './modules/workorders.js';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -65,8 +73,9 @@ function goPage(pageId) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navMap = {
     'page-home': 'nav-home', 'page-scanner': 'nav-scanner', 'page-catalog': 'nav-catalog',
-    'page-maint': 'nav-maint', 'page-maint-calendar': 'nav-maint', 'page-stock': 'nav-stock',
-    'page-purchases': 'nav-stock',
+    'page-maint': 'nav-maint', 'page-maint-calendar': 'nav-maint',
+    'page-os': 'nav-maint', 'page-os-dash': 'nav-maint',
+    'page-stock': 'nav-stock', 'page-purchases': 'nav-stock',
     'page-suppliers': 'nav-suppliers', 'page-reports': 'nav-reports', 'page-about': 'nav-about',
     'page-admin': 'nav-home'
   };
@@ -89,6 +98,8 @@ function goPage(pageId) {
     'page-admin': renderAdmin,
     'page-maint': renderMaint,
     'page-maint-calendar': renderMaintCalendar,
+    'page-os': renderOS,
+    'page-os-dash': renderOSDashboard,
     'page-stock': renderStock,
     'page-purchases': renderPurchases,
     'page-suppliers': renderSuppliers,
@@ -327,6 +338,34 @@ window.generatePurchaseList = generatePurchaseList;
 window.cyclePurchase = cyclePurchase;
 window.removePurchase = removePurchase;
 window.exportPurchases = exportPurchases;
+
+// ═══════════════════════════════════════════
+// ORDENS DE SERVIÇO — módulo migrado (modules/workorders.js)
+// Bindings para os handlers inline (onclick/onchange/oninput) do HTML
+// ═══════════════════════════════════════════
+window.setOSTab = setOSTab;
+window.renderOS = renderOS;                 // os-search oninput
+window.openOSModal = openOSModal;
+window.closeOSModal = closeOSModal;
+window.saveOS = saveOS;
+window.openOSDetail = openOSDetail;
+window.closeOSDetail = closeOSDetail;
+window.setOSDetailTab = setOSDetailTab;
+window.editCurrentOS = editCurrentOS;
+window.changeOSStatus = changeOSStatus;
+window.addOSTimelineNote = addOSTimelineNote;
+window.deleteOS = deleteOS;
+window.openOSMaterialModal = openOSMaterialModal;
+window.closeOSMaterialModal = closeOSMaterialModal;
+window.onOSMatStockChange = onOSMatStockChange;
+window.saveOSMaterial = saveOSMaterial;
+window.removeOSMaterial = removeOSMaterial;
+window.openOSPhotoModal = openOSPhotoModal;
+window.closeOSPhotoModal = closeOSPhotoModal;
+window.onOSPhotoFile = onOSPhotoFile;
+window.saveOSPhoto = saveOSPhoto;
+window.exportOS = exportOS;
+window.printOS = printOS;
 
 // ═══════════════════════════════════════════
 // RELATÓRIOS
@@ -625,6 +664,9 @@ export async function init() {
   document.getElementById('modal-stock')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeStockModal(); });
   document.getElementById('modal-movement')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeMovementModal(); });
   document.getElementById('modal-supplier')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeSupplierModal(); });
+  document.getElementById('modal-os')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeOSModal(); });
+  document.getElementById('modal-os-material')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeOSMaterialModal(); });
+  document.getElementById('modal-os-photo')?.addEventListener('click', e => { if (e.target === e.currentTarget) window.closeOSPhotoModal(); });
 
   console.log('✅ R2C-Scan v2.0 ready');
 }
