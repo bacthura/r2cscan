@@ -43,7 +43,7 @@ import {
 } from './modules/reports.js';
 import {
   initAuth, registerAuthHooks, gateShow, openLoginModal, closeLoginModal,
-  handleGateLogin, handleGateRegister, handleLogin, handleLogout,
+  handleGateLogin, handleGateRegister, handleGatePasswordReset, handleLogin, handleLogout,
   checkAdmin, openAdminModal, checkAdminPw,
   renderUsers, openUserModal, closeUserModal, saveUser
 } from './modules/auth.js';
@@ -376,6 +376,7 @@ async function renderAbout() {
 window.gateShow = gateShow;
 window.handleGateLogin = handleGateLogin;
 window.handleGateRegister = handleGateRegister;
+window.handleGatePasswordReset = handleGatePasswordReset;
 window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
 window.openLoginModal = openLoginModal;

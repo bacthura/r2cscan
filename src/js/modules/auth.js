@@ -239,6 +239,32 @@ export async function handleGateRegister() {
   } finally { btn.style.display = 'flex'; loadingBtn.style.display = 'none'; }
 }
 
+export async function handleGatePasswordReset() {
+  const email = document.getElementById('gate-email').value.trim();
+  const errorEl = document.getElementById('gate-error');
+  const setMsg = (msg, ok) => {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+    errorEl.style.color = ok ? 'var(--accent)' : 'var(--danger)';
+    errorEl.style.borderColor = ok ? 'var(--accent)' : 'var(--danger)';
+    errorEl.style.background = ok ? 'rgba(0,245,160,.1)' : 'rgba(255,68,102,.1)';
+  };
+  if (!email) { setMsg('Digite seu email acima para redefinir a senha', false); return; }
+  if (!firebaseAuth) { setMsg('Serviço indisponível. Recarregue a página.', false); return; }
+  try {
+    await firebaseAuth.sendPasswordResetEmail(email);
+    setMsg('✓ Email de redefinição enviado para ' + email + '. Confira a caixa de entrada (e o spam).', true);
+  } catch (err) {
+    const map = {
+      'auth/invalid-email': 'Email inválido',
+      'auth/user-not-found': 'Não há conta com esse email',
+      'auth/missing-email': 'Digite seu email',
+      'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos'
+    };
+    setMsg(map[err.code] || err.message || 'Erro ao enviar email de redefinição', false);
+  }
+}
+
 export async function handleLogin() {
   const email = document.getElementById('login-email-input').value.trim();
   const password = document.getElementById('login-pw-input').value;
