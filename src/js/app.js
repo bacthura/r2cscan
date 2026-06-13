@@ -201,6 +201,7 @@ window.closeAddModal = closeAddModal;
 window.saveProduct = saveProduct;
 window.previewPhoto = previewPhoto;
 window.addSpecField = addSpecField;
+window.renderCatalog = renderCatalog;        // busca oninput do catálogo
 
 // Ganchos: funções que vivem no app.js até seus módulos serem migrados
 registerProductHooks({ renderHome, renderAdmin, resumeScanner: setupScannerPage });
@@ -298,6 +299,7 @@ window.openMovementModalForItem = openMovementModalForItem;
 window.closeMovementModal = closeMovementModal;
 window.toggleMovementFields = toggleMovementFields;
 window.saveMovement = saveMovement;
+window.renderStock = renderStock;            // busca oninput do estoque
 
 // ═══════════════════════════════════════════
 // FORNECEDORES — módulo migrado (modules/suppliers.js)
@@ -306,6 +308,7 @@ window.saveMovement = saveMovement;
 window.openSupplierModal = openSupplierModal;
 window.closeSupplierModal = closeSupplierModal;
 window.saveSupplier = saveSupplier;
+window.renderSuppliers = renderSuppliers;    // busca oninput de fornecedores
 
 // ═══════════════════════════════════════════
 // COMPRAS — módulo migrado (modules/purchases.js)

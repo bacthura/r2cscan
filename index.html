@@ -1363,7 +1363,9 @@
 <div id="toast"></div>
 
 <script src="/env.js"></script>
-<script>
+<!-- ─── 8c: app migrado para módulos ES. O <script> inline abaixo foi NEUTRALIZADO
+     (type não-executável); fica como rede de segurança até a limpeza (8d). ─── -->
+<script type="application/x-legacy-inline" data-disabled="migration-8c">
 // ═══════════════════════════════════════════
 //  API Service Layer (optional backend connection)
 //  Connects to Node/Express backend when available.
@@ -3184,7 +3186,7 @@ if ('serviceWorker' in navigator) {
      Aditivo, offline-first (IndexedDB), integrado a estoque/fornecedores.
      v2.1
 ═════════════════════════════════════════════════════════════════════ -->
-<script>
+<script type="application/x-legacy-inline" data-disabled="migration-8c">
 // ─── Estado do módulo OS ───
 let osTab = 'all';
 let currentOSId = null;
@@ -3730,5 +3732,8 @@ async function printOS(id){
   if (el) el.addEventListener('click', e=>{ if(e.target===e.currentTarget) el.classList.remove('open'); });
 });
 </script>
+
+<!-- ─── 8c: entrada da base de módulos ES (substitui todo o JS inline acima) ─── -->
+<script type="module" src="/src/js/main.js"></script>
 </body>
 </html>
