@@ -155,10 +155,11 @@ Migrar nesta ordem. NÃO pular etapas.
 
 ## 5. LIMPEZAS SEPARADAS (NÃO misturar com a migração)
 
-Fazer só DEPOIS, em sessões próprias:
-- Remover `index.html.bak`, pasta `backups/`.
-- Garantir que `node_modules/` está no `.gitignore` (não versionar).
-- Remover dependências não usadas do `package.json` raiz
-  (firebase / react-router-dom / react-hot-toast NÃO são usadas pelo app atual — confirmar antes).
-- Decidir destino da pasta `invite-codes/` (app React separado).
-- Decidir hospedagem final (hoje: backend no Render + frontend mirando Vercel).
+- [x] Remover `index.html.bak`, pasta `backups/`. ✅ 2026-06-13
+- [x] Tirar `node_modules/` do versionamento (já no `.gitignore`; `git rm -r --cached`, 9286 arquivos). ✅ 2026-06-13
+- [ ] ~~Remover deps firebase/react-router-dom/react-hot-toast~~ — **CANCELADO**: verificação
+      mostrou que ESTÃO em uso (app React em `invite-codes/`; `firebase` também em `backend/` e
+      `frontend/`). A sugestão original estava errada. (Resta talvez analisar se o `package.json`
+      da RAIZ precisa delas, já que o `invite-codes/` tem o seu próprio — análise delicada, depois.)
+- [ ] Decidir destino da pasta `invite-codes/` (app React separado).
+- [ ] Decidir hospedagem final (hoje: backend no Render + frontend mirando Vercel).
