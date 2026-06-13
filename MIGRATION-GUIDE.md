@@ -110,9 +110,12 @@ Migrar nesta ordem. NÃO pular etapas.
              captureAndAnalyze portado; aiAnalyzeImage é STUB local — sem IA real,
              igual ao de hoje — e o ping morto ao backend foi removido. Dormente
              até o swap. Obs.: "Esqueci minha senha" no gate também entrou (auth.js).)
-      - [ ] **8c. Swap** → trocar o `<script>` + ajustar o markup do scanner; expor
-            `window.renderCatalog/renderStock/renderSuppliers` (buscas `oninput` que
-            faltavam); testar TUDO com o inline ainda presente (rede de segurança).
+      - [x] **8c. Swap** → ✅ 2026-06-13 — `<script type="module" src="/src/js/main.js">`
+            ativo; os 2 blocos inline neutralizados (type não-executável) como rede de
+            segurança; `window.renderCatalog/renderStock/renderSuppliers` expostos;
+            markup do scanner já tinha `#scanner-reader`. Smoke test headless OK (módulos
+            carregam, Firebase init, gate renderiza). FALTA seu teste manual COMPLETO de
+            todas as telas antes do 8d (que remove a rede de segurança).
       - [ ] **8d. Limpeza** → remover o bloco de JS inline antigo do index.html.
 
 ### Notas técnicas (lembretes entre módulos)
