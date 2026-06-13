@@ -154,15 +154,22 @@ export async function saveMovement() {
   item.updatedAt = Date.now();
   await save(STORES.STOCK, item);
 
-  const mov = { id: `mov_${Date.now()}`, itemId, itemName: item.name, type, qty, reason, responsavel, devolvidoPor, timestamp: Date.now() };
-  const movs = JSON.parse(localStorage.getItem('r2c_movements') || '[]');
-  movs.unshift(mov);
-  localStorage.setItem('r2c_movements', JSON.stringify(movs.slice(0, 500)));
+  recordMovement({ id: `mov_${Date.now()}`, itemId, itemName: item.name, type, qty, reason, responsavel, devolvidoPor, timestamp: Date.now() });
 
   closeMovementModal();
   toast('Movimentação registrada!', 'success');
   renderStock();
   if (state.stockTab === 'movements') renderMovements();
+}
+
+/**
+ * Registra uma movimentação no histórico (localStorage 'r2c_movements').
+ * Único ponto de escrita — workorders.js (OS) reusa daqui; não duplicar.
+ */
+export function recordMovement(mov) {
+  const movs = JSON.parse(localStorage.getItem('r2c_movements') || '[]');
+  movs.unshift(mov);
+  localStorage.setItem('r2c_movements', JSON.stringify(movs.slice(0, 500)));
 }
 
 export async function renderMovements() {
