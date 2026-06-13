@@ -76,10 +76,18 @@ Migrar nesta ordem. NÃO pular etapas.
        renderMaintCalendar, showMaintDay; scheduleRecurrence privado — padrão
        id-string nos cards; hooks p/ renderHome; maintMiniCardHTML exportado pois
        a Home importa; setVal órfão removido do app.js)
-- [ ] **6. Ordens de Serviço (MAIOR — ~30 funções)** → `src/js/modules/workorders.js`
-      (tudo que começa com OS / os: openOSModal, saveOS, renderOS,
-       renderOSDashboard, renderOSDetail, changeOSStatus, addOSTimelineNote,
-       openOSMaterialModal, saveOSMaterial, removeOSMaterial, osTotal, etc.)
+- [x] **6. Ordens de Serviço (MAIOR — ~30 funções)** → `src/js/modules/workorders.js` ✅ 2026-06-13
+      (openOSModal, saveOS, renderOS, openOSDetail, renderOSDetail, setOSTab,
+       setOSDetailTab, changeOSStatus, addOSTimelineNote, deleteOS, editCurrentOS,
+       openOSMaterialModal, saveOSMaterial, removeOSMaterial, onOSMatStockChange,
+       openOSPhotoModal, saveOSPhoto, onOSPhotoFile, computeKPIs, renderOSDashboard,
+       exportOS, printOS, osTotal/osMaterialsTotal, osCan — permissões;
+       reusa recordMovement de stock.js p/ baixa de estoque ao consumir material,
+       e downloadCSV/printHTML de export.js; padrão id-string nos cards;
+       currentOSId espelhado em window p/ o printOS(currentOSId) inline congelado.
+       Arquivo já vinha commitado; esta entrega foi o passo 4 — ligar no app.js:
+       import + navMap (page-os/page-os-dash) + renderers + bindings window.* +
+       fechar modais no overlay.)
 - [ ] **7. Relatórios + extras** → `src/js/modules/reports.js`
       (computeKPIs, renderReports, setReportsTab, downloadCSV, exportData,
        importData, exportOS, printOS, printHTML, startVoiceSearch, toggleTheme)
@@ -91,6 +99,10 @@ Migrar nesta ordem. NÃO pular etapas.
 
 - downloadCSV e printHTML vivem em `src/js/utils/export.js` (criado no módulo 4).
   Módulos 6 (exportOS/printOS) e 7 (exportData) devem IMPORTAR de lá — não duplicar.
+
+- `computeKPIs` foi migrada no módulo 6 (vive em `modules/workorders.js`, exportada),
+  apesar de o item do módulo 7 abaixo ainda listá-la. Ao migrar relatórios (módulo 7),
+  IMPORTAR de workorders.js — não reescrever.
 
 - Movimentações vivem em localStorage('r2c_movements'). Estoque (módulo 2) e
   Ordens de Serviço (módulo 6) escrevem nas duas. Ao migrar OS, REUSAR saveMovement
